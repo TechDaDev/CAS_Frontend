@@ -9,6 +9,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
 import { UserCategoryBadge } from '@/components/institution-users/UserCategoryBadge';
 import { InstitutionUserFormModal } from '@/components/institution-users/InstitutionUserFormModal';
+import { FallbackImage } from '@/components/common/FallbackImage';
 
 export default function InstitutionUsersPage() {
   const { user } = useAuth();
@@ -151,17 +152,16 @@ export default function InstitutionUsersPage() {
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
-                        {institutionUser.profile_image ? (
-                          <img
-                            src={institutionUser.profile_image}
-                            alt={institutionUser.full_name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-sm font-medium text-slate-600">
-                            {institutionUser.first_name[0]}{institutionUser.last_name[0]}
-                          </span>
-                        )}
+                        <FallbackImage
+                          src={institutionUser.profile_image}
+                          alt={institutionUser.full_name}
+                          className="h-full w-full object-cover"
+                          fallback={
+                            <span className="text-sm font-medium text-slate-600">
+                              {institutionUser.first_name[0]}{institutionUser.last_name[0]}
+                            </span>
+                          }
+                        />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-slate-900">{institutionUser.full_name}</p>

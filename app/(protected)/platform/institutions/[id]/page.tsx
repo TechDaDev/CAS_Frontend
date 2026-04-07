@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { institutionsService, UpdateInstitutionData } from '@/services/institutions';
+import { institutionsService } from '@/services/institutions';
 import { Institution } from '@/types';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import Link from 'next/link';
 import { AssignDeanModal } from '@/components/platform/AssignDeanModal';
+import { FallbackImage } from '@/components/common/FallbackImage';
 
 export default function InstitutionDetailPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -106,11 +107,12 @@ export default function InstitutionDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="h-16 w-16 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden">
-            {institution.logo ? (
-              <img src={institution.logo} alt={institution.name} className="h-full w-full object-cover" />
-            ) : (
-              <span className="text-2xl font-bold text-slate-400">{institution.name[0]}</span>
-            )}
+            <FallbackImage
+              src={institution.logo}
+              alt={institution.name}
+              className="h-full w-full object-cover"
+              fallback={<span className="text-2xl font-bold text-slate-400">{institution.name[0]}</span>}
+            />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">{institution.name}</h1>
@@ -137,13 +139,16 @@ export default function InstitutionDetailPage() {
         </div>
         <div className="flex items-center gap-4">
           <div className="h-24 w-24 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden">
-            {institution.logo ? (
-              <img src={institution.logo} alt={institution.name} className="h-full w-full object-cover" />
-            ) : (
-              <svg className="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            )}
+            <FallbackImage
+              src={institution.logo}
+              alt={institution.name}
+              className="h-full w-full object-cover"
+              fallback={
+                <svg className="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              }
+            />
           </div>
           <div>
             <label className="cursor-pointer rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">

@@ -7,6 +7,7 @@ import { uiLabels } from '@/lib/ui-ar';
 import { useEffect, useState } from 'react';
 import { institutionsService } from '@/services/institutions';
 import { Institution } from '@/types';
+import { FallbackImage } from '@/components/common/FallbackImage';
 
 interface NavItem {
   label: string;
@@ -215,13 +216,16 @@ export function SidebarNav() {
         <div className="border-b border-slate-200 px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden">
-              {institution?.logo ? (
-                <img src={institution.logo} alt={institution.name} className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-lg font-bold text-slate-400">
-                  {institution?.name?.[0] || user?.institution_name?.[0] || 'C'}
-                </span>
-              )}
+              <FallbackImage
+                src={institution?.logo}
+                alt={institution?.name || user?.institution_name || 'Institution logo'}
+                className="h-full w-full object-cover"
+                fallback={
+                  <span className="text-lg font-bold text-slate-400">
+                    {institution?.name?.[0] || user?.institution_name?.[0] || 'C'}
+                  </span>
+                }
+              />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-900 truncate">

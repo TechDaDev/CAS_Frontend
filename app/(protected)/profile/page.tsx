@@ -6,6 +6,7 @@ import { authService } from '@/services/api';
 import { CurrentUser } from '@/types';
 import { LoadingState } from '@/components/LoadingState';
 import { UserCategoryBadge } from '@/components/institution-users/UserCategoryBadge';
+import { FallbackImage } from '@/components/common/FallbackImage';
 
 export default function ProfilePage() {
   const { user: authUser } = useAuth();
@@ -52,17 +53,16 @@ export default function ProfilePage() {
           <div className="rounded-lg border border-slate-200 bg-white p-6">
             <div className="flex flex-col items-center">
               <div className="h-24 w-24 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
-                {user.profile_image ? (
-                  <img
-                    src={user.profile_image}
-                    alt={user.first_name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="text-2xl font-medium text-slate-600">
-                    {user.first_name[0]}{user.last_name[0]}
-                  </span>
-                )}
+                <FallbackImage
+                  src={user.profile_image}
+                  alt={user.first_name}
+                  className="h-full w-full object-cover"
+                  fallback={
+                    <span className="text-2xl font-medium text-slate-600">
+                      {user.first_name[0]}{user.last_name[0]}
+                    </span>
+                  }
+                />
               </div>
               <h2 className="mt-4 text-xl font-semibold text-slate-900">
                 {user.first_name} {user.last_name}

@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { institutionUsersService, CreateInstitutionUserData, UpdateInstitutionUserData } from '@/services/institutionUsers';
 import { InstitutionUser, UserCategory } from '@/types';
-import { UserCategoryBadge } from './UserCategoryBadge';
 import { ApiError } from '@/services/api';
+import { FallbackImage } from '@/components/common/FallbackImage';
 
 interface InstitutionUserFormModalProps {
   isOpen: boolean;
@@ -134,13 +134,16 @@ export function InstitutionUserFormModal({
               <label className="block text-sm font-medium text-slate-700">الصورة الشخصية</label>
               <div className="mt-2 flex items-center gap-4">
                 <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
-                  {profileImagePreview ? (
-                    <img src={profileImagePreview} alt="Profile" className="h-full w-full object-cover" />
-                  ) : (
-                    <svg className="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  )}
+                  <FallbackImage
+                    src={profileImagePreview}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                    fallback={
+                      <svg className="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    }
+                  />
                 </div>
                 <input
                   type="file"
