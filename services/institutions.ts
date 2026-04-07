@@ -31,6 +31,10 @@ export interface UpdateInstitutionData {
   logo?: File;
 }
 
+interface UpdateInstitutionOptions {
+  method?: 'PUT' | 'PATCH';
+}
+
 export const institutionsService = {
   async listInstitutions(params?: { search?: string; is_active?: boolean }): Promise<PaginatedResponse<Institution>> {
     const queryParams = new URLSearchParams();
@@ -49,8 +53,13 @@ export const institutionsService = {
     return api.post<Institution>('/institutions/', data);
   },
 
-  async updateInstitution(id: string, data: UpdateInstitutionData): Promise<Institution> {
-    // Use FormData for multipart upload if logo is provided
+  async updateInstitution(
+    id: string,
+    data: UpdateInstitutionData,
+    options: UpdateInstitutionOptions = {}
+  ): Promise<Institution> {
+    const method = options.method ?? 'PATCH';
+
     if (data.logo) {
       const formData = new FormData();
       if (data.name !== undefined) formData.append('name', data.name);
@@ -63,10 +72,9 @@ export const institutionsService = {
       if (data.is_active !== undefined) formData.append('is_active', String(data.is_active));
       formData.append('logo', data.logo);
 
-      return api.multipart<Institution>(`/institutions/${id}/`, formData, 'PATCH');
+      return api.multipart<Institution>(`/institutions/${id}/`, formData, method);
     }
 
-    // Regular JSON request if no logo
     const updateData: Record<string, unknown> = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.slug !== undefined) updateData.slug = data.slug;
@@ -77,7 +85,17 @@ export const institutionsService = {
     if (data.contact_phone !== undefined) updateData.contact_phone = data.contact_phone;
     if (data.is_active !== undefined) updateData.is_active = data.is_active;
 
-    return api.patch<Institution>(`/institutions/${id}/`, updateData);
+    return method === 'PUT'
+      ? api.put<Institution>(`/institutions/${id}/`, updateData)
+      : api.patch<Institution>(`/institutions/${id}/`, updateData);
+  },
+
+  async deactivateInstitution(id: string): Promise<void> {
+    return api.delete<void>(`/institutions/${id}/`);
+  },
+
+  async reactivateInstitution(id: string): Promise<Institution> {
+    return api.patch<Institution>(`/institutions/${id}/`, { is_active: true });
   },
 
   async assignDean(institutionId: string, data: AssignDeanData): Promise<Institution> {

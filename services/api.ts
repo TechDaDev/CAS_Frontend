@@ -165,11 +165,18 @@ class ApiClient {
     });
   }
 
+  async put<T>(endpoint: string, data: unknown): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
-  async multipart<T>(endpoint: string, formData: FormData, method: 'POST' | 'PATCH' = 'POST'): Promise<T> {
+  async multipart<T>(endpoint: string, formData: FormData, method: 'POST' | 'PATCH' | 'PUT' = 'POST'): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const token = this.getToken();
 

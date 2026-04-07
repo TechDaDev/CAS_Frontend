@@ -1,29 +1,65 @@
 'use client';
 
-import { useState } from 'react';
-import { institutionsService, CreateInstitutionData } from '@/services/institutions';
+import { useEffect, useState } from 'react';
+import { institutionsService, CreateInstitutionData, UpdateInstitutionData } from '@/services/institutions';
+import { Institution } from '@/types';
 import { ApiError } from '@/services/api';
+import { FallbackImage } from '@/components/common/FallbackImage';
 
 interface InstitutionFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  institution?: Institution | null;
 }
 
-export function InstitutionFormModal({ isOpen, onClose, onSuccess }: InstitutionFormModalProps) {
-  const [formData, setFormData] = useState<CreateInstitutionData>({
-    name: '',
-    slug: '',
-    code: '',
-    description: '',
-    address: '',
-    contact_email: '',
-    contact_phone: '',
-    is_active: true,
-  });
+const EMPTY_FORM_DATA: CreateInstitutionData = {
+  name: '',
+  slug: '',
+  code: '',
+  description: '',
+  address: '',
+  contact_email: '',
+  contact_phone: '',
+  is_active: true,
+};
+
+export function InstitutionFormModal({ isOpen, onClose, onSuccess, institution }: InstitutionFormModalProps) {
+  const isEdit = !!institution;
+  const [formData, setFormData] = useState<CreateInstitutionData>(EMPTY_FORM_DATA);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setErrors({});
+    setGeneralError(null);
+    setIsSubmitting(false);
+    setLogoFile(null);
+
+    if (institution) {
+      setFormData({
+        name: institution.name,
+        slug: institution.slug,
+        code: institution.code,
+        description: institution.description || '',
+        address: institution.address || '',
+        contact_email: institution.contact_email || '',
+        contact_phone: institution.contact_phone || '',
+        is_active: institution.is_active,
+      });
+      setLogoPreview(institution.logo || null);
+    } else {
+      setFormData(EMPTY_FORM_DATA);
+      setLogoPreview(null);
+    }
+  }, [institution, isOpen]);
 
   if (!isOpen) return null;
 
@@ -34,18 +70,26 @@ export function InstitutionFormModal({ isOpen, onClose, onSuccess }: Institution
     setIsSubmitting(true);
 
     try {
-      await institutionsService.createInstitution(formData);
+      if (isEdit && institution) {
+        const updateData: UpdateInstitutionData = {
+          name: formData.name,
+          slug: formData.slug,
+          code: formData.code,
+          description: formData.description,
+          address: formData.address,
+          contact_email: formData.contact_email,
+          contact_phone: formData.contact_phone,
+          is_active: formData.is_active,
+          logo: logoFile || undefined,
+        };
+
+        await institutionsService.updateInstitution(institution.id, updateData, { method: 'PUT' });
+      } else {
+        await institutionsService.createInstitution(formData);
+        setFormData(EMPTY_FORM_DATA);
+      }
+
       onSuccess();
-      setFormData({
-        name: '',
-        slug: '',
-        code: '',
-        description: '',
-        address: '',
-        contact_email: '',
-        contact_phone: '',
-        is_active: true,
-      });
     } catch (err) {
       if (err instanceof ApiError && err.data) {
         const errorData = err.data as Record<string, string[]>;
@@ -55,7 +99,7 @@ export function InstitutionFormModal({ isOpen, onClose, onSuccess }: Institution
         });
         setErrors(fieldErrors);
       } else {
-        setGeneralError('فشل إنشاء المؤسسة. يرجى المحاولة مرة أخرى.');
+        setGeneralError(isEdit ? 'فشل تحديث المؤسسة. يرجى المحاولة مرة أخرى.' : 'فشل إنشاء المؤسسة. يرجى المحاولة مرة أخرى.');
       }
     } finally {
       setIsSubmitting(false);
@@ -69,13 +113,31 @@ export function InstitutionFormModal({ isOpen, onClose, onSuccess }: Institution
     }
   };
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-        <div className="relative w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
-          <h2 className="text-xl font-semibold text-slate-900">إنشاء مؤسسة جديدة</h2>
-          <p className="mt-1 text-sm text-slate-500">أدخل تفاصيل المؤسسة الجديدة</p>
+        <div className="relative w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
+          <h2 className="text-xl font-semibold text-slate-900">
+            {isEdit ? 'تعديل المؤسسة' : 'إنشاء مؤسسة جديدة'}
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            {isEdit ? 'حدّث بيانات المؤسسة وحالتها من النموذج التالي.' : 'أدخل تفاصيل المؤسسة الجديدة.'}
+          </p>
 
           {generalError && (
             <div className="mt-4 rounded-md bg-rose-50 p-3 text-sm text-rose-700">
@@ -84,9 +146,35 @@ export function InstitutionFormModal({ isOpen, onClose, onSuccess }: Institution
           )}
 
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+            {isEdit && (
+              <div>
+                <label htmlFor="institution_logo" className="block text-sm font-medium text-slate-700">
+                  شعار المؤسسة
+                </label>
+                <div className="mt-2 flex items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                    <FallbackImage
+                      src={logoPreview}
+                      alt={formData.name || 'Institution logo'}
+                      className="h-full w-full object-cover"
+                      fallback={<span className="text-xl font-bold text-slate-400">{formData.name?.[0] || 'C'}</span>}
+                    />
+                  </div>
+                  <input
+                    id="institution_logo"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoChange}
+                    className="text-sm text-slate-600"
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
-              <label className="block text-sm font-medium text-slate-700">الاسم *</label>
+              <label htmlFor="institution_name" className="block text-sm font-medium text-slate-700">الاسم *</label>
               <input
+                id="institution_name"
                 type="text"
                 required
                 value={formData.name}
@@ -97,10 +185,11 @@ export function InstitutionFormModal({ isOpen, onClose, onSuccess }: Institution
               {errors.name && <p className="mt-1 text-xs text-rose-600">{errors.name}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-slate-700">الرمز *</label>
+                <label htmlFor="institution_code" className="block text-sm font-medium text-slate-700">الرمز *</label>
                 <input
+                  id="institution_code"
                   type="text"
                   required
                   value={formData.code}
@@ -111,8 +200,9 @@ export function InstitutionFormModal({ isOpen, onClose, onSuccess }: Institution
                 {errors.code && <p className="mt-1 text-xs text-rose-600">{errors.code}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">الاختصار *</label>
+                <label htmlFor="institution_slug" className="block text-sm font-medium text-slate-700">الاختصار *</label>
                 <input
+                  id="institution_slug"
                   type="text"
                   required
                   value={formData.slug}
@@ -125,19 +215,21 @@ export function InstitutionFormModal({ isOpen, onClose, onSuccess }: Institution
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700">الوصف</label>
+              <label htmlFor="institution_description" className="block text-sm font-medium text-slate-700">الوصف</label>
               <textarea
+                id="institution_description"
                 value={formData.description}
                 onChange={(e) => handleChange('description', e.target.value)}
-                rows={2}
+                rows={3}
                 className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="وصف مختصر للمؤسسة..."
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700">العنوان</label>
+              <label htmlFor="institution_address" className="block text-sm font-medium text-slate-700">العنوان</label>
               <input
+                id="institution_address"
                 type="text"
                 value={formData.address}
                 onChange={(e) => handleChange('address', e.target.value)}
@@ -146,10 +238,11 @@ export function InstitutionFormModal({ isOpen, onClose, onSuccess }: Institution
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-slate-700">البريد الإلكتروني</label>
+                <label htmlFor="institution_contact_email" className="block text-sm font-medium text-slate-700">البريد الإلكتروني</label>
                 <input
+                  id="institution_contact_email"
                   type="email"
                   value={formData.contact_email}
                   onChange={(e) => handleChange('contact_email', e.target.value)}
@@ -159,8 +252,9 @@ export function InstitutionFormModal({ isOpen, onClose, onSuccess }: Institution
                 {errors.contact_email && <p className="mt-1 text-xs text-rose-600">{errors.contact_email}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">رقم الهاتف</label>
+                <label htmlFor="institution_contact_phone" className="block text-sm font-medium text-slate-700">رقم الهاتف</label>
                 <input
+                  id="institution_contact_phone"
                   type="tel"
                   value={formData.contact_phone}
                   onChange={(e) => handleChange('contact_phone', e.target.value)}
@@ -173,13 +267,13 @@ export function InstitutionFormModal({ isOpen, onClose, onSuccess }: Institution
             <div className="flex items-center">
               <input
                 type="checkbox"
-                id="is_active"
-                checked={formData.is_active}
+                id="institution_is_active"
+                checked={formData.is_active ?? false}
                 onChange={(e) => handleChange('is_active', e.target.checked)}
                 className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
-              <label htmlFor="is_active" className="mr-2 text-sm text-slate-700">
-                مؤسسة نشطة
+              <label htmlFor="institution_is_active" className="mr-2 text-sm text-slate-700">
+                المؤسسة نشطة
               </label>
             </div>
 
@@ -196,7 +290,7 @@ export function InstitutionFormModal({ isOpen, onClose, onSuccess }: Institution
                 disabled={isSubmitting}
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                {isSubmitting ? 'جارٍ الإنشاء...' : 'إنشاء'}
+                {isSubmitting ? (isEdit ? 'جارٍ الحفظ...' : 'جارٍ الإنشاء...') : (isEdit ? 'حفظ التغييرات' : 'إنشاء')}
               </button>
             </div>
           </form>
