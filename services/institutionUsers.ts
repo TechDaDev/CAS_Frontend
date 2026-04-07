@@ -56,20 +56,7 @@ export const institutionUsersService = {
         formData.append('is_active', String(data.is_active));
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/accounts/institution-users/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw error;
-      }
-
-      return response.json();
+      return api.multipart<InstitutionUser>('/accounts/institution-users/', formData, 'POST');
     }
 
     // Regular JSON request if no profile_image
@@ -94,20 +81,7 @@ export const institutionUsersService = {
       if (data.user_category !== undefined) formData.append('user_category', data.user_category);
       formData.append('profile_image', data.profile_image);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/accounts/institution-users/${id}/`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw error;
-      }
-
-      return response.json();
+      return api.multipart<InstitutionUser>(`/accounts/institution-users/${id}/`, formData, 'PATCH');
     }
 
     // Regular JSON request if no profile_image

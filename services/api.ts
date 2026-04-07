@@ -1,6 +1,60 @@
 import { AuthTokens, LoginCredentials, CurrentUser } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://corrarchivsystem.up.railway.app/api';
+const isLocalhost = typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL ||
+  (isLocalhost ? 'http://127.0.0.1:8000/api' : 'https://corrarchivsystem.up.railway.app/api')
+).replace(/\/+$/, '');
+
+const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api$/, '');
+const MEDIA_FIELD_KEYS = new Set(['logo', 'profile_image', 'file']);
+
+function resolveAssetUrl(url: string | null | undefined): string | null {
+  if (!url) {
+    return null;
+  }
+
+  if (/^(data|blob):/i.test(url)) {
+    return url;
+  }
+
+  if (/^https?:\/\//i.test(url)) {
+    try {
+      const parsedUrl = new URL(url);
+      if (['127.0.0.1', 'localhost'].includes(parsedUrl.hostname) && !isLocalhost) {
+        return `${BACKEND_BASE_URL}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+      }
+    } catch {
+      return url;
+    }
+
+    return url;
+  }
+
+  return `${BACKEND_BASE_URL}${url.startsWith('/') ? url : `/${url}`}`;
+}
+
+function normalizeApiData<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeApiData(item)) as T;
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => {
+        if (MEDIA_FIELD_KEYS.has(key) && (typeof item === 'string' || item == null)) {
+          return [key, resolveAssetUrl(item as string | null | undefined)];
+        }
+
+        return [key, normalizeApiData(item)];
+      })
+    ) as T;
+  }
+
+  return value;
+}
 
 class ApiError extends Error {
   constructor(
@@ -79,7 +133,7 @@ class ApiClient {
         return null as T;
       }
 
-      return await response.json() as T;
+      return normalizeApiData(await response.json()) as T;
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
@@ -115,7 +169,7 @@ class ApiClient {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
-  async upload<T>(endpoint: string, formData: FormData): Promise<T> {
+  async multipart<T>(endpoint: string, formData: FormData, method: 'POST' | 'PATCH' = 'POST'): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const token = this.getToken();
 
@@ -125,10 +179,23 @@ class ApiClient {
     }
 
     const response = await fetch(url, {
-      method: 'POST',
+      method,
       headers,
       body: formData,
     });
+
+    if (response.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        window.location.href = '/login';
+      }
+      throw new ApiError('Unauthorized', 401);
+    }
+
+    if (response.status === 403) {
+      throw new ApiError('Forbidden', 403);
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
@@ -139,7 +206,11 @@ class ApiClient {
       );
     }
 
-    return await response.json() as T;
+    return normalizeApiData(await response.json()) as T;
+  }
+
+  async upload<T>(endpoint: string, formData: FormData): Promise<T> {
+    return this.multipart<T>(endpoint, formData, 'POST');
   }
 }
 

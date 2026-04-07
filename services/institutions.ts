@@ -63,20 +63,7 @@ export const institutionsService = {
       if (data.is_active !== undefined) formData.append('is_active', String(data.is_active));
       formData.append('logo', data.logo);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/institutions/${id}/`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw error;
-      }
-
-      return response.json();
+      return api.multipart<Institution>(`/institutions/${id}/`, formData, 'PATCH');
     }
 
     // Regular JSON request if no logo
