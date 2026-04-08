@@ -1,57 +1,105 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { institutionUsersService } from '@/services/institutionUsers';
-import { InstitutionUser, UserCategory } from '@/types';
+import { ApiError } from '@/services/api';
+import { institutionsService } from '@/services/institutions';
+import { Institution, InstitutionUser, UserCategory } from '@/types';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
 import { UserCategoryBadge } from '@/components/institution-users/UserCategoryBadge';
 import { InstitutionUserFormModal } from '@/components/institution-users/InstitutionUserFormModal';
 import { FallbackImage } from '@/components/common/FallbackImage';
+import { PageHeader } from '@/components/PageHeader';
+
+type FeedbackState = {
+  type: 'success' | 'error';
+  message: string;
+} | null;
 
 export default function InstitutionUsersPage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [institutionUsers, setInstitutionUsers] = useState<InstitutionUser[]>([]);
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<InstitutionUser | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<UserCategory | ''>('');
   const [activeFilter, setActiveFilter] = useState<boolean | null>(null);
+  const [institutionFilter, setInstitutionFilter] = useState('');
 
-  const institutionId = user?.institution_id;
+  const canSelectInstitution = !!user?.is_superuser;
 
-  const loadInstitutionUsers = async () => {
+  const loadInstitutionUsers = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const response = await institutionUsersService.listInstitutionUsers({
         search: searchQuery || undefined,
         user_category: (categoryFilter as UserCategory) || undefined,
         is_active: activeFilter ?? undefined,
-        institution: institutionId || undefined,
+        institution: canSelectInstitution ? institutionFilter || undefined : undefined,
       });
       setInstitutionUsers(response.results);
     } catch (err) {
-      setError('فشل تحميل مستخدمي المؤسسة');
+      if (err instanceof ApiError && err.status === 403) {
+        setError('لا تملك صلاحية عرض مستخدمي المؤسسة.');
+      } else {
+        setError('فشل تحميل مستخدمي المؤسسة');
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeFilter, canSelectInstitution, categoryFilter, institutionFilter, searchQuery]);
+
+  const loadInstitutions = useCallback(async () => {
+    if (!user?.is_superuser) {
+      setInstitutions([]);
+      return;
+    }
+
+    try {
+      const response = await institutionsService.listInstitutions({ is_active: true });
+      setInstitutions(response.results);
+    } catch {
+      setInstitutions([]);
+    }
+  }, [user?.is_superuser]);
 
   useEffect(() => {
+    if (authLoading || !user) {
+      return;
+    }
+
     loadInstitutionUsers();
-  }, [searchQuery, categoryFilter, activeFilter, institutionId]);
+  }, [authLoading, loadInstitutionUsers, user]);
+
+  useEffect(() => {
+    if (authLoading || !user) {
+      return;
+    }
+
+    loadInstitutions();
+  }, [authLoading, loadInstitutions, user]);
 
   const handleUserCreated = () => {
     loadInstitutionUsers();
     setIsModalOpen(false);
     setSelectedUser(null);
+    setFeedback({
+      type: 'success',
+      message: selectedUser ? 'تم تحديث بيانات المستخدم بنجاح.' : 'تم إنشاء المستخدم بنجاح.',
+    });
   };
 
   const handleEditUser = (user: InstitutionUser) => {
+    setFeedback(null);
     setSelectedUser(user);
     setIsModalOpen(true);
   };
@@ -61,7 +109,7 @@ export default function InstitutionUsersPage() {
     setSelectedUser(null);
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return <LoadingState message="جارٍ تحميل مستخدمي المؤسسة..." />;
   }
 
@@ -71,21 +119,37 @@ export default function InstitutionUsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">مستخدمو المؤسسة</h1>
-          <p className="text-sm text-slate-500">إدارة مستخدمي المؤسسة والفئات</p>
-        </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+      <PageHeader
+        title="مستخدمو المؤسسة"
+        subtitle={user?.is_superuser
+          ? 'إدارة مستخدمي المؤسسات عبر المنصة.'
+          : 'متاح إنشاء المستخدمين للعميد أو للموظف المفوض حسب صلاحيات الهيكل التنظيمي.'}
+        action={
+          <button
+            onClick={() => {
+              setFeedback(null);
+              setSelectedUser(null);
+              setIsModalOpen(true);
+            }}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            + إنشاء مستخدم
+          </button>
+        }
+      />
+
+      {feedback && (
+        <div
+          className={`rounded-md p-3 text-sm ${
+            feedback.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+          }`}
         >
-          + إنشاء مستخدم
-        </button>
-      </div>
+          {feedback.message}
+        </div>
+      )}
 
       {/* Filters */}
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row">
         <div className="flex-1">
           <input
             type="text"
@@ -95,6 +159,20 @@ export default function InstitutionUsersPage() {
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
+        {canSelectInstitution && (
+          <select
+            value={institutionFilter}
+            onChange={(e) => setInstitutionFilter(e.target.value)}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="">جميع المؤسسات</option>
+            {institutions.map((institution) => (
+              <option key={institution.id} value={institution.id}>
+                {institution.name}
+              </option>
+            ))}
+          </select>
+        )}
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value as UserCategory | '')}
@@ -137,6 +215,9 @@ export default function InstitutionUsersPage() {
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                   الحالة
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  المؤسسة
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                   تاريخ الإنشاء
@@ -184,15 +265,26 @@ export default function InstitutionUsersPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
+                    {institutionUser.institution_name || '-'}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
                     {new Date(institutionUser.created_at).toLocaleDateString('ar-SA')}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <button
-                      onClick={() => handleEditUser(institutionUser)}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      تعديل
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href={`/institution-users/${institutionUser.id}`}
+                        className="text-slate-700 hover:text-slate-900"
+                      >
+                        التفاصيل
+                      </Link>
+                      <button
+                        onClick={() => handleEditUser(institutionUser)}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        تعديل
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -206,7 +298,10 @@ export default function InstitutionUsersPage() {
         onClose={handleCloseModal}
         onSuccess={handleUserCreated}
         user={selectedUser}
-        institutionId={institutionId || ''}
+        defaultInstitutionId={user?.institution_id}
+        institutionName={user?.institution_name}
+        allowInstitutionSelection={canSelectInstitution}
+        institutionOptions={institutions}
       />
     </div>
   );

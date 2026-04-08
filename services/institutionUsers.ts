@@ -2,7 +2,7 @@ import { api } from './api';
 import { InstitutionUser, PaginatedResponse, UserCategory } from '@/types';
 
 export interface CreateInstitutionUserData {
-  institution: string;
+  institution?: string;
   email: string;
   password: string;
   first_name: string;
@@ -17,7 +17,7 @@ export interface UpdateInstitutionUserData {
   last_name?: string;
   is_active?: boolean;
   user_category?: UserCategory;
-  profile_image?: File;
+  profile_image?: File | null;
 }
 
 export const institutionUsersService = {
@@ -45,7 +45,9 @@ export const institutionUsersService = {
     // Use FormData for multipart upload if profile_image is provided
     if (data.profile_image) {
       const formData = new FormData();
-      formData.append('institution', data.institution);
+      if (data.institution) {
+        formData.append('institution', data.institution);
+      }
       formData.append('email', data.email);
       formData.append('password', data.password);
       formData.append('first_name', data.first_name);
@@ -61,7 +63,7 @@ export const institutionUsersService = {
 
     // Regular JSON request if no profile_image
     return api.post<InstitutionUser>('/accounts/institution-users/', {
-      institution: data.institution,
+      ...(data.institution ? { institution: data.institution } : {}),
       email: data.email,
       password: data.password,
       first_name: data.first_name,
@@ -72,14 +74,18 @@ export const institutionUsersService = {
   },
 
   async updateInstitutionUser(id: string, data: UpdateInstitutionUserData): Promise<InstitutionUser> {
-    // Use FormData for multipart upload if profile_image is provided
-    if (data.profile_image) {
+    // Use FormData for multipart upload if profile_image is provided or explicitly cleared
+    if (data.profile_image !== undefined) {
       const formData = new FormData();
       if (data.first_name !== undefined) formData.append('first_name', data.first_name);
       if (data.last_name !== undefined) formData.append('last_name', data.last_name);
       if (data.is_active !== undefined) formData.append('is_active', String(data.is_active));
       if (data.user_category !== undefined) formData.append('user_category', data.user_category);
-      formData.append('profile_image', data.profile_image);
+      if (data.profile_image instanceof File) {
+        formData.append('profile_image', data.profile_image);
+      } else {
+        formData.append('profile_image', '');
+      }
 
       return api.multipart<InstitutionUser>(`/accounts/institution-users/${id}/`, formData, 'PATCH');
     }

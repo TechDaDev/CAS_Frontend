@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { institutionUsersService, CreateInstitutionUserData, UpdateInstitutionUserData } from '@/services/institutionUsers';
-import { InstitutionUser, UserCategory } from '@/types';
+import { Institution, InstitutionUser, UserCategory } from '@/types';
 import { ApiError } from '@/services/api';
 import { FallbackImage } from '@/components/common/FallbackImage';
 
@@ -11,7 +11,25 @@ interface InstitutionUserFormModalProps {
   onClose: () => void;
   onSuccess: () => void;
   user?: InstitutionUser | null;
-  institutionId: string;
+  defaultInstitutionId?: string | null;
+  allowInstitutionSelection?: boolean;
+  institutionOptions?: Institution[];
+  institutionName?: string | null;
+}
+
+function getInitialFormData(
+  user: InstitutionUser | null | undefined,
+  defaultInstitutionId?: string | null
+): Partial<CreateInstitutionUserData> {
+  return {
+    institution: user?.institution || defaultInstitutionId || '',
+    email: user?.email || '',
+    password: '',
+    first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
+    user_category: user?.user_category || 'staff',
+    is_active: user?.is_active ?? true,
+  };
 }
 
 export function InstitutionUserFormModal({
@@ -19,22 +37,45 @@ export function InstitutionUserFormModal({
   onClose,
   onSuccess,
   user,
-  institutionId,
+  defaultInstitutionId,
+  allowInstitutionSelection = false,
+  institutionOptions = [],
+  institutionName,
 }: InstitutionUserFormModalProps) {
   const isEdit = !!user;
-  const [formData, setFormData] = useState<Partial<CreateInstitutionUserData>>({
-    institution: institutionId,
-    email: user?.email || '',
-    first_name: user?.first_name || '',
-    last_name: user?.last_name || '',
-    user_category: user?.user_category || 'staff',
-    is_active: user?.is_active ?? true,
-  });
+  const [formData, setFormData] = useState<Partial<CreateInstitutionUserData>>(() =>
+    getInitialFormData(user, defaultInstitutionId)
+  );
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(user?.profile_image || null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
+
+  const selectedInstitutionName = useMemo(() => {
+    if (isEdit) {
+      return user?.institution_name || institutionName || null;
+    }
+
+    if (!formData.institution) {
+      return institutionName || null;
+    }
+
+    return institutionOptions.find((institution) => institution.id === formData.institution)?.name || institutionName || null;
+  }, [formData.institution, institutionName, institutionOptions, isEdit, user]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setFormData(getInitialFormData(user, defaultInstitutionId));
+    setProfileImage(null);
+    setProfileImagePreview(user?.profile_image || null);
+    setErrors({});
+    setGeneralError(null);
+    setIsSubmitting(false);
+  }, [defaultInstitutionId, isOpen, user]);
 
   if (!isOpen) return null;
 
@@ -68,7 +109,6 @@ export function InstitutionUserFormModal({
         await institutionUsersService.updateInstitutionUser(user.id, updateData);
       } else {
         const createData: CreateInstitutionUserData = {
-          institution: institutionId,
           email: formData.email || '',
           password: formData.password || '',
           first_name: formData.first_name || '',
@@ -76,23 +116,38 @@ export function InstitutionUserFormModal({
           user_category: (formData.user_category as UserCategory) || 'staff',
           profile_image: profileImage || undefined,
           is_active: formData.is_active,
+          institution: allowInstitutionSelection ? formData.institution || undefined : undefined,
         };
         await institutionUsersService.createInstitutionUser(createData);
       }
       onSuccess();
     } catch (err) {
-      if (err instanceof ApiError && err.data) {
+      if (err instanceof ApiError && err.status === 403) {
+        setGeneralError(
+          isEdit
+            ? 'لا تملك صلاحية تعديل هذا المستخدم.'
+            : 'لا تملك صلاحية إنشاء مستخدمي المؤسسة. هذه الميزة متاحة للعميد أو للموظف المفوض فقط.'
+        );
+      } else if (err instanceof ApiError && err.data) {
         const errorData = err.data as Record<string, string[]>;
         const fieldErrors: Record<string, string> = {};
         Object.entries(errorData).forEach(([key, value]) => {
-          fieldErrors[key] = Array.isArray(value) ? value[0] : value;
+          fieldErrors[key] = Array.isArray(value) ? value[0] : String(value);
         });
+        if (fieldErrors.detail) {
+          setGeneralError(fieldErrors.detail);
+          delete fieldErrors.detail;
+        }
+        if (fieldErrors.non_field_errors) {
+          setGeneralError(fieldErrors.non_field_errors);
+          delete fieldErrors.non_field_errors;
+        }
         setErrors(fieldErrors);
       } else if (typeof err === 'object' && err !== null) {
         const errorObj = err as Record<string, string[]>;
         const fieldErrors: Record<string, string> = {};
         Object.entries(errorObj).forEach(([key, value]) => {
-          fieldErrors[key] = Array.isArray(value) ? value[0] : value;
+          fieldErrors[key] = Array.isArray(value) ? value[0] : String(value);
         });
         setErrors(fieldErrors);
       } else {
@@ -179,6 +234,32 @@ export function InstitutionUserFormModal({
               </div>
             </div>
 
+            {!isEdit && allowInstitutionSelection && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700">المؤسسة *</label>
+                <select
+                  required
+                  value={formData.institution || ''}
+                  onChange={(e) => handleChange('institution', e.target.value)}
+                  className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">اختر المؤسسة</option>
+                  {institutionOptions.map((institution) => (
+                    <option key={institution.id} value={institution.id}>
+                      {institution.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.institution && <p className="mt-1 text-xs text-rose-600">{errors.institution}</p>}
+              </div>
+            )}
+
+            {!isEdit && !allowInstitutionSelection && selectedInstitutionName && (
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+                سيتم ربط المستخدم بالمؤسسة الحالية: <span className="font-medium text-slate-900">{selectedInstitutionName}</span>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-slate-700">البريد الإلكتروني *</label>
               <input
@@ -244,7 +325,7 @@ export function InstitutionUserFormModal({
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (!isEdit && allowInstitutionSelection && !formData.institution)}
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
               >
                 {isSubmitting ? 'جارٍ الحفظ...' : isEdit ? 'حفظ' : 'إنشاء'}
