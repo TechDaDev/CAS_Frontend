@@ -6,7 +6,23 @@ import { CurrentUser } from '@/types';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { PageHeader } from '@/components/PageHeader';
-import { FallbackImage } from '@/components/common/FallbackImage';
+
+function getInitials(firstName: string, lastName: string): string {
+  return `${(firstName || 'U')[0]}${(lastName || 'S')[0]}`.toUpperCase();
+}
+
+function AvatarFallback({ name, size = 'md' }: { name: string; size?: 'md' | 'lg' }) {
+  const [firstName, lastName] = name.split(' ');
+  const sizeClasses = {
+    md: 'h-12 w-12 text-sm',
+    lg: 'h-20 w-20 text-base',
+  };
+  return (
+    <div className={`rounded-full bg-blue-500 flex items-center justify-center text-white font-bold ${sizeClasses[size]}`}>
+      {getInitials(firstName || '', lastName || '')}
+    </div>
+  );
+}
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
@@ -199,7 +215,7 @@ export default function ProfilePage() {
                     className="h-16 w-16 rounded-full object-cover"
                   />
                 ) : (
-                  <FallbackImage name={`${user.first_name} ${user.last_name}`} size="lg" />
+                  <AvatarFallback name={`${user.first_name} ${user.last_name}`} size="lg" />
                 )}
                 <div>
                   <h2 className="text-xl font-semibold text-slate-900">
@@ -247,7 +263,7 @@ export default function ProfilePage() {
                       className="h-20 w-20 rounded-full object-cover"
                     />
                   ) : (
-                    <FallbackImage name={`${firstName} ${lastName}`} size="lg" />
+                    <AvatarFallback name={`${firstName} ${lastName}`} size="lg" />
                   )}
                 </div>
                 <div className="flex-1">

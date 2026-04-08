@@ -1,0 +1,127 @@
+2026-04-08T19:19:20.516087565Z [inf]  
+2026-04-08T19:19:21.856200853Z [inf]  [35m[Region: us-east4][0m
+2026-04-08T19:19:21.868038892Z [err]  INFO No package manager inferred, using npm default
+2026-04-08T19:19:21.868091010Z [err]  
+2026-04-08T19:19:21.914949199Z [inf]  
+2026-04-08T19:19:21.915003763Z [inf]  [38;2;125;86;243m╭─────────────────╮[0m
+2026-04-08T19:19:21.915009131Z [inf]  [38;2;125;86;243m│[0m Railpack 0.23.0 [38;2;125;86;243m│[0m
+2026-04-08T19:19:21.915012498Z [inf]  [38;2;125;86;243m╰─────────────────╯[0m
+2026-04-08T19:19:21.915018137Z [inf]  
+2026-04-08T19:19:21.915021968Z [inf]  [97m↳ Detected Node[0m
+2026-04-08T19:19:21.915024862Z [inf]  [97m↳ Using npm package manager[0m
+2026-04-08T19:19:21.915027947Z [inf]  
+2026-04-08T19:19:21.915031034Z [inf]  [1mPackages[0m
+2026-04-08T19:19:21.915034163Z [inf]  [38;5;238m──────────[0m
+2026-04-08T19:19:21.915037374Z [inf]  [95mnode[0m  [38;5;238m│[0m  [96m22.22.2[0m  [38;5;238m│[0m  railpack default (22)
+2026-04-08T19:19:21.915040271Z [inf]  
+2026-04-08T19:19:21.915043191Z [inf]  [1mSteps[0m
+2026-04-08T19:19:21.915046233Z [inf]  [38;5;238m──────────[0m
+2026-04-08T19:19:21.915048923Z [inf]  [95m▸ install[0m
+2026-04-08T19:19:21.915052123Z [inf]  [38;5;245m$[0m [1mnpm ci[0m
+2026-04-08T19:19:21.915054768Z [inf]  
+2026-04-08T19:19:21.915057668Z [inf]  [95m▸ build[0m
+2026-04-08T19:19:21.915060554Z [inf]  [38;5;245m$[0m [1mnpm run build[0m
+2026-04-08T19:19:21.915063265Z [inf]  
+2026-04-08T19:19:21.915065947Z [inf]  [1mDeploy[0m
+2026-04-08T19:19:21.915068750Z [inf]  [38;5;238m──────────[0m
+2026-04-08T19:19:21.915071356Z [inf]  [38;5;245m$[0m [1mnpm run start[0m
+2026-04-08T19:19:21.915074141Z [inf]  
+2026-04-08T19:19:21.915076968Z [inf]  
+2026-04-08T19:19:21.916691080Z [inf]  Successfully prepared Railpack plan for build
+2026-04-08T19:19:21.916740242Z [inf]  
+2026-04-08T19:19:21.916748272Z [inf]  
+2026-04-08T19:19:21.917172970Z [inf]  context: 9c07-8Zjq
+2026-04-08T19:19:22.082029440Z [inf]  [internal] load build definition from railpack-plan.json
+2026-04-08T19:19:22.082110536Z [inf]  [internal] load build definition from railpack-plan.json
+2026-04-08T19:19:22.082131423Z [inf]  [internal] load build definition from railpack-plan.json
+2026-04-08T19:19:22.082142824Z [inf]  [internal] load build definition from railpack-plan.json
+2026-04-08T19:19:22.092135528Z [inf]  [internal] load build definition from railpack-plan.json
+2026-04-08T19:19:22.093881854Z [inf]  resolve image config for docker-image://ghcr.io/railwayapp/railpack-frontend:v0.23.0
+2026-04-08T19:19:22.181157938Z [inf]  resolve image config for docker-image://ghcr.io/railwayapp/railpack-frontend:v0.23.0
+2026-04-08T19:19:22.181221249Z [inf]  docker-image://ghcr.io/railwayapp/railpack-frontend:v0.23.0@sha256:ba4c430961d9ee3215c64807727a4b11e2198daac31250e9db9eaf9cee4624d6
+2026-04-08T19:19:22.181447151Z [inf]  docker-image://ghcr.io/railwayapp/railpack-frontend:v0.23.0@sha256:ba4c430961d9ee3215c64807727a4b11e2198daac31250e9db9eaf9cee4624d6
+2026-04-08T19:19:22.185912306Z [inf]  docker-image://ghcr.io/railwayapp/railpack-frontend:v0.23.0@sha256:ba4c430961d9ee3215c64807727a4b11e2198daac31250e9db9eaf9cee4624d6
+2026-04-08T19:19:22.186191202Z [inf]  docker-image://ghcr.io/railwayapp/railpack-frontend:v0.23.0@sha256:ba4c430961d9ee3215c64807727a4b11e2198daac31250e9db9eaf9cee4624d6
+2026-04-08T19:19:22.287130567Z [inf]  load build definition from railpack-plan.json
+2026-04-08T19:19:22.287190956Z [inf]  load build definition from railpack-plan.json
+2026-04-08T19:19:22.287412642Z [inf]  load build definition from railpack-plan.json
+2026-04-08T19:19:22.296929554Z [inf]  load build definition from railpack-plan.json
+2026-04-08T19:19:22.865503869Z [inf]  mkdir -p /app/node_modules/.cache
+2026-04-08T19:19:22.865554082Z [inf]  copy /root/.local/state/mise
+2026-04-08T19:19:22.865561210Z [inf]  copy /etc/mise/config.toml
+2026-04-08T19:19:22.865567634Z [inf]  copy /usr/local/bin/mise
+2026-04-08T19:19:22.865577273Z [inf]  copy /mise/installs
+2026-04-08T19:19:22.865583825Z [inf]  copy package-lock.json
+2026-04-08T19:19:22.865589705Z [inf]  install mise packages: node
+2026-04-08T19:19:22.865599671Z [inf]  create mise config
+2026-04-08T19:19:22.865608795Z [inf]  mkdir /etc/mise
+2026-04-08T19:19:22.865618159Z [inf]  docker-image://ghcr.io/railwayapp/railpack-builder:mise-2026.3.17
+2026-04-08T19:19:22.865633172Z [inf]  install apt packages: libatomic1
+2026-04-08T19:19:22.865643889Z [inf]  loading .
+2026-04-08T19:19:22.865653269Z [inf]  copy package.json
+2026-04-08T19:19:22.865661598Z [inf]  docker-image://ghcr.io/railwayapp/railpack-runtime:mise-2026.3.17
+2026-04-08T19:19:22.865669582Z [inf]  copy /mise/shims
+2026-04-08T19:19:22.865693849Z [inf]  copy /app/node_modules
+2026-04-08T19:19:22.865699927Z [inf]  npm run build
+2026-04-08T19:19:22.865706770Z [inf]  [railpack] secrets hash
+2026-04-08T19:19:22.865712120Z [inf]  copy / /app
+2026-04-08T19:19:22.865718189Z [inf]  npm ci
+2026-04-08T19:19:22.865747895Z [inf]  [railpack] merge $packages:apt:runtime, $packages:mise, $build, $build
+2026-04-08T19:19:22.865759289Z [inf]  copy /app
+2026-04-08T19:19:22.865767941Z [inf]  copy /root/.cache
+2026-04-08T19:19:22.865816740Z [inf]  docker-image://ghcr.io/railwayapp/railpack-builder:mise-2026.3.17
+2026-04-08T19:19:22.865823972Z [inf]  loading .
+2026-04-08T19:19:22.865829745Z [inf]  [railpack] secrets hash
+2026-04-08T19:19:22.865835086Z [inf]  docker-image://ghcr.io/railwayapp/railpack-runtime:mise-2026.3.17
+2026-04-08T19:19:22.949453775Z [inf]  docker-image://ghcr.io/railwayapp/railpack-builder:mise-2026.3.17
+2026-04-08T19:19:22.955576206Z [inf]  loading .
+2026-04-08T19:19:22.955607959Z [inf]  [railpack] secrets hash
+2026-04-08T19:19:22.966265590Z [inf]  [railpack] secrets hash
+2026-04-08T19:19:22.976668674Z [inf]  docker-image://ghcr.io/railwayapp/railpack-runtime:mise-2026.3.17
+2026-04-08T19:19:22.984322566Z [inf]  loading .
+2026-04-08T19:19:22.987407686Z [inf]  mkdir /etc/mise
+2026-04-08T19:19:22.987428579Z [inf]  create mise config
+2026-04-08T19:19:22.987441104Z [inf]  install mise packages: node
+2026-04-08T19:19:22.987454571Z [inf]  mkdir -p /app/node_modules/.cache
+2026-04-08T19:19:22.987468051Z [inf]  copy package-lock.json
+2026-04-08T19:19:22.987480407Z [inf]  copy package.json
+2026-04-08T19:19:22.987502896Z [inf]  npm ci
+2026-04-08T19:19:22.987536192Z [inf]  copy / /app
+2026-04-08T19:19:23.031711914Z [inf]  copy / /app
+2026-04-08T19:19:23.033727061Z [inf]  npm run build
+2026-04-08T19:19:23.376858107Z [inf]  npm warn config production Use `--omit=dev` instead.
+
+2026-04-08T19:19:23.402592029Z [inf]  
+> oms_frontend@0.1.0 build
+> next build
+
+
+2026-04-08T19:19:23.943916661Z [inf]  ▲ Next.js 16.2.2 (Turbopack)
+
+2026-04-08T19:19:23.944203101Z [inf]  
+
+2026-04-08T19:19:23.971063454Z [inf]    Creating an optimized production build ...
+
+2026-04-08T19:19:27.579663359Z [inf]  ✓ Compiled successfully in 3.4s
+
+2026-04-08T19:19:27.582151417Z [inf]    Running TypeScript ...
+
+2026-04-08T19:19:31.883966771Z [inf]  Failed to type check.
+
+
+2026-04-08T19:19:31.884294266Z [inf]  ./app/(protected)/profile/page.tsx:202:34
+Type error: Type '{ name: string; size: string; }' is not assignable to type 'IntrinsicAttributes & FallbackImageProps'.
+  Property 'name' does not exist on type 'IntrinsicAttributes & FallbackImageProps'.
+
+  [90m200 |[0m                   />
+  [90m201 |[0m                 ) : (
+[31m[1m>[0m [90m202 |[0m                   <[33mFallbackImage[0m name={[32m`[0m${user.first_name[32m} [0m${user.last_name[32m}`[0m} size=[32m"lg"[0m />
+  [90m    |[0m                                  [31m[1m^[0m
+  [90m203 |[0m                 )}
+  [90m204 |[0m                 <div>
+  [90m205 |[0m                   <h2 className=[32m"text-xl font-semibold text-slate-900"[0m>
+
+2026-04-08T19:19:31.939594581Z [inf]  Next.js build worker exited with code: 1 and signal: null
+
+2026-04-08T19:19:32.038647439Z [err]  npm run build
+2026-04-08T19:19:32.057370830Z [err]  ERROR: failed to build: failed to solve: process "npm run build" did not complete successfully: exit code: 1
