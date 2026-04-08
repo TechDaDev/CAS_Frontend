@@ -1,0 +1,19 @@
+{
+  "servers": {
+    "Railway": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@railway/mcp-server"]
+    },
+    "chrome-devtools": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest"]
+    },
+    "browsermcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@browsermcp/mcp@latest"]
+    }
+  }
+}

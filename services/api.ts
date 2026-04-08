@@ -252,6 +252,29 @@ export const authService = {
     return api.get<CurrentUser>('/auth/me/');
   },
 
+  async updateProfile(data: {
+    first_name?: string;
+    last_name?: string;
+    profile_image?: File | null;
+  }): Promise<CurrentUser> {
+    // Check if profile_image is included
+    if (data.profile_image !== undefined) {
+      const formData = new FormData();
+      if (data.first_name) formData.append('first_name', data.first_name);
+      if (data.last_name) formData.append('last_name', data.last_name);
+      if (data.profile_image instanceof File) {
+        formData.append('profile_image', data.profile_image);
+      }
+      return api.multipart<CurrentUser>('/auth/me/', formData, 'PATCH');
+    }
+
+    // No file upload, use regular JSON request
+    return api.patch<CurrentUser>('/auth/me/', {
+      ...(data.first_name !== undefined && { first_name: data.first_name }),
+      ...(data.last_name !== undefined && { last_name: data.last_name }),
+    });
+  },
+
   logout(): void {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('access_token');
