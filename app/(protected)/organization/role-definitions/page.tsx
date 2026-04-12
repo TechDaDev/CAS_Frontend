@@ -33,7 +33,7 @@ export default function RoleDefinitionsPage() {
         isActive: filters.isActive as boolean | undefined,
       });
       setRoleDefinitions(response.results);
-    } catch (err) {
+    } catch {
       setError('فشل تحميل تعريفات الأدوار');
     } finally {
       setIsLoading(false);
@@ -168,6 +168,7 @@ export default function RoleDefinitionsPage() {
       />
 
       <EntityFormModal
+        key={`${editingRole?.id ?? 'new'}-${isModalOpen ? 'open' : 'closed'}`}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);

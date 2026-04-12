@@ -49,7 +49,7 @@ export default function CommitteeMembersPage() {
       setMembers(membersResponse.results);
       setCommittees(committeesResponse.results);
       setAssignments(assignmentsResponse.results);
-    } catch (err) {
+    } catch {
       setError('فشل تحميل أعضاء اللجان');
     } finally {
       setIsLoading(false);
@@ -229,6 +229,7 @@ export default function CommitteeMembersPage() {
       />
 
       <EntityFormModal
+        key={`${editingMember?.id ?? 'new'}-${isModalOpen ? 'open' : 'closed'}`}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);

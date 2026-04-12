@@ -43,7 +43,7 @@ export default function PositionsPage() {
       setPositions(positionsResponse.results);
       setPositionTypes(typesResponse.results);
       setUnits(unitsResponse.results);
-    } catch (err) {
+    } catch {
       setError('فشل تحميل المناصب');
     } finally {
       setIsLoading(false);
@@ -206,6 +206,7 @@ export default function PositionsPage() {
       />
 
       <EntityFormModal
+        key={`${editingPosition?.id ?? 'new'}-${isModalOpen ? 'open' : 'closed'}`}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);

@@ -42,8 +42,7 @@ export interface CreateUnitPayload {
   unit_type: string;
   parent?: string;
   description?: string;
-  handles_incoming_registry?: boolean;
-  handles_outgoing_registry?: boolean;
+  handles_incoming_outgoing?: boolean;
   is_active?: boolean;
 }
 

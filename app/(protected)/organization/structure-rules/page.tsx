@@ -43,7 +43,7 @@ export default function StructureRulesPage() {
       setRules(rulesResponse.results);
       setRoleDefinitions(rolesResponse.results);
       setUnitTypes(typesResponse.results);
-    } catch (err) {
+    } catch {
       setError('فشل تحميل قواعد الهيكل');
     } finally {
       setIsLoading(false);
@@ -219,6 +219,7 @@ export default function StructureRulesPage() {
       />
 
       <EntityFormModal
+        key={`${editingRule?.id ?? 'new'}-${isModalOpen ? 'open' : 'closed'}`}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);

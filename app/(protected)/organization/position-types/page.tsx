@@ -33,7 +33,7 @@ export default function PositionTypesPage() {
         isActive: filters.isActive as boolean | undefined,
       });
       setPositionTypes(response.results);
-    } catch (err) {
+    } catch {
       setError('فشل تحميل أنواع المناصب');
     } finally {
       setIsLoading(false);
@@ -165,6 +165,7 @@ export default function PositionTypesPage() {
       />
 
       <EntityFormModal
+        key={`${editingPositionType?.id ?? 'new'}-${isModalOpen ? 'open' : 'closed'}`}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);

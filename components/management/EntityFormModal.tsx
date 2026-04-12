@@ -44,7 +44,6 @@ export function EntityFormModal({
 
   const renderField = (field: Field): ReactNode => {
     const value = formData[field.key] ?? '';
-    const error = errors[field.key];
 
     switch (field.type) {
       case 'text':

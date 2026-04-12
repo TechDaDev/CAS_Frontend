@@ -45,7 +45,7 @@ export default function CommitteesListPage() {
       setCommittees(committeesResponse.results);
       setCommitteeTypes(typesResponse.results);
       setUnits(unitsResponse.results);
-    } catch (err) {
+    } catch {
       setError('فشل تحميل اللجان');
     } finally {
       setIsLoading(false);
@@ -248,6 +248,7 @@ export default function CommitteesListPage() {
       />
 
       <EntityFormModal
+        key={`${editingCommittee?.id ?? 'new'}-${isModalOpen ? 'open' : 'closed'}`}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);

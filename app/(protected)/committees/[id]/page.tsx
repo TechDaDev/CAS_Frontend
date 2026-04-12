@@ -262,6 +262,7 @@ export default function CommitteeDetailPage() {
       </div>
 
       <EntityFormModal
+        key={`${editingMember?.id ?? 'new'}-${isModalOpen ? 'open' : 'closed'}`}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);

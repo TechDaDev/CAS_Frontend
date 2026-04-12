@@ -33,7 +33,7 @@ export default function UnitTypesPage() {
         isActive: filters.isActive as boolean | undefined,
       });
       setUnitTypes(response.results);
-    } catch (err) {
+    } catch {
       setError('Failed to load unit types');
     } finally {
       setIsLoading(false);
@@ -165,6 +165,7 @@ export default function UnitTypesPage() {
       />
 
       <EntityFormModal
+        key={`${editingUnitType?.id ?? 'new'}-${isModalOpen ? 'open' : 'closed'}`}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);

@@ -39,7 +39,7 @@ export default function UnitsPage() {
       ]);
       setUnits(unitsResponse.results);
       setUnitTypes(typesResponse.results);
-    } catch (err) {
+    } catch {
       setError('Failed to load units');
     } finally {
       setIsLoading(false);
@@ -61,8 +61,7 @@ export default function UnitsPage() {
         unit_type: data.unit_type as string,
         parent: data.parent as string | undefined,
         description: data.description as string,
-        handles_incoming_registry: data.handles_incoming_registry as boolean,
-        handles_outgoing_registry: data.handles_outgoing_registry as boolean,
+        handles_incoming_outgoing: data.handles_incoming_outgoing as boolean,
         is_active: data.is_active as boolean,
       });
       setIsModalOpen(false);
@@ -94,8 +93,7 @@ export default function UnitsPage() {
         unit_type: data.unit_type as string,
         parent: data.parent as string | undefined,
         description: data.description as string,
-        handles_incoming_registry: data.handles_incoming_registry as boolean,
-        handles_outgoing_registry: data.handles_outgoing_registry as boolean,
+        handles_incoming_outgoing: data.handles_incoming_outgoing as boolean,
         is_active: data.is_active as boolean,
       });
       setIsModalOpen(false);
@@ -160,8 +158,7 @@ export default function UnitsPage() {
       options: [{ value: '', label: 'لا شيء' }, ...unitOptions],
     },
     { key: 'description', label: 'الوصف', type: 'textarea' as const },
-    { key: 'handles_incoming_registry', label: 'تعالج السجل الوارد', type: 'checkbox' as const },
-    { key: 'handles_outgoing_registry', label: 'تعالج السجل الصادر', type: 'checkbox' as const },
+    { key: 'handles_incoming_outgoing', label: 'تعالج السجل الوارد والصادر', type: 'checkbox' as const },
     { key: 'is_active', label: 'نشط', type: 'checkbox' as const },
   ];
 
@@ -204,6 +201,7 @@ export default function UnitsPage() {
       />
 
       <EntityFormModal
+        key={`${editingUnit?.id ?? 'new'}-${isModalOpen ? 'open' : 'closed'}`}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
@@ -218,10 +216,9 @@ export default function UnitsPage() {
           unit_type: editingUnit.unit_type,
           parent: editingUnit.parent || '',
           description: editingUnit.description || '',
-          handles_incoming_registry: editingUnit.handles_incoming_outgoing,
-          handles_outgoing_registry: editingUnit.handles_incoming_outgoing,
+          handles_incoming_outgoing: editingUnit.handles_incoming_outgoing,
           is_active: editingUnit.is_active,
-        } : { is_active: true, handles_incoming_registry: false, handles_outgoing_registry: false }}
+        } : { is_active: true, handles_incoming_outgoing: false }}
         onSubmit={editingUnit ? handleUpdate : handleCreate}
         isSubmitting={isSubmitting}
         errors={formErrors}

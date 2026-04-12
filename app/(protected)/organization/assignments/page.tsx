@@ -47,7 +47,7 @@ export default function AssignmentsPage() {
       setPositions(positionsResponse.results);
       setUnits(unitsResponse.results);
       setRoleDefinitions(rolesResponse.results);
-    } catch (err) {
+    } catch {
       setError('فشل تحميل التخصيصات');
     } finally {
       setIsLoading(false);
@@ -226,6 +226,7 @@ export default function AssignmentsPage() {
       />
 
       <EntityFormModal
+        key={`${editingAssignment?.id ?? 'new'}-${isModalOpen ? 'open' : 'closed'}`}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);

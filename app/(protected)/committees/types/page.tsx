@@ -33,7 +33,7 @@ export default function CommitteeTypesPage() {
         isActive: filters.isActive as boolean | undefined,
       });
       setCommitteeTypes(response.results);
-    } catch (err) {
+    } catch {
       setError('فشل تحميل أنواع اللجان');
     } finally {
       setIsLoading(false);
@@ -165,6 +165,7 @@ export default function CommitteeTypesPage() {
       />
 
       <EntityFormModal
+        key={`${editingType?.id ?? 'new'}-${isModalOpen ? 'open' : 'closed'}`}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
