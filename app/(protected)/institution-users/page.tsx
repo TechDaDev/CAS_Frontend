@@ -74,8 +74,15 @@ export default function InstitutionUsersPage() {
     }
 
     try {
-      const response = await institutionsService.listInstitutions({ is_active: true });
-      setInstitutions(response.results);
+      const all: Institution[] = [];
+      let page = 1;
+      while (true) {
+        const response = await institutionsService.listInstitutions({ is_active: true, page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setInstitutions(all);
     } catch {
       setInstitutions([]);
     }

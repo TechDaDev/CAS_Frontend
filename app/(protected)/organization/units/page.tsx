@@ -35,17 +35,13 @@ export default function UnitsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [unitsResponse, typesResponse] = await Promise.all([
-        organizationService.getUnits({
-          institution: institutionId,
-          unitType: filters.unitType as string | undefined,
-          isActive: filters.isActive as boolean | undefined,
-          page: currentPage,
-        }),
-        organizationService.getUnitTypes({ institution: institutionId }),
-      ]);
+      const unitsResponse = await organizationService.getUnits({
+        institution: institutionId,
+        unitType: filters.unitType as string | undefined,
+        isActive: filters.isActive as boolean | undefined,
+        page: currentPage,
+      });
       setUnits(unitsResponse.results);
-      setUnitTypes(typesResponse.results);
       setTotalItems(unitsResponse.count);
       setHasNextPage(Boolean(unitsResponse.next));
       setHasPreviousPage(Boolean(unitsResponse.previous));
@@ -89,6 +85,27 @@ export default function UnitsPage() {
   useEffect(() => {
     loadParentUnits();
   }, [loadParentUnits]);
+
+  const loadAllUnitTypes = useCallback(async () => {
+    if (!institutionId) { setUnitTypes([]); return; }
+    try {
+      const all: UnitType[] = [];
+      let page = 1;
+      while (true) {
+        const response = await organizationService.getUnitTypes({ institution: institutionId, page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setUnitTypes(all);
+    } catch {
+      setUnitTypes([]);
+    }
+  }, [institutionId]);
+
+  useEffect(() => {
+    loadAllUnitTypes();
+  }, [loadAllUnitTypes]);
 
   const handleCreate = async (data: Record<string, unknown>) => {
     setIsSubmitting(true);

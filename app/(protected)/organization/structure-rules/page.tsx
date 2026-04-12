@@ -35,20 +35,14 @@ export default function StructureRulesPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [rulesResponse, rolesResponse, typesResponse] = await Promise.all([
-        organizationService.getStructureRules({
-          institution: institutionId,
-          roleDefinition: filters.roleDefinition as string | undefined,
-          action: filters.action as string | undefined,
-          isActive: filters.isActive as boolean | undefined,
-          page: currentPage,
-        }),
-        organizationService.getRoleDefinitions({ institution: institutionId }),
-        organizationService.getUnitTypes({ institution: institutionId }),
-      ]);
+      const rulesResponse = await organizationService.getStructureRules({
+        institution: institutionId,
+        roleDefinition: filters.roleDefinition as string | undefined,
+        action: filters.action as string | undefined,
+        isActive: filters.isActive as boolean | undefined,
+        page: currentPage,
+      });
       setRules(rulesResponse.results);
-      setRoleDefinitions(rolesResponse.results);
-      setUnitTypes(typesResponse.results);
       setTotalItems(rulesResponse.count);
       setHasNextPage(Boolean(rulesResponse.next));
       setHasPreviousPage(Boolean(rulesResponse.previous));
@@ -62,6 +56,48 @@ export default function StructureRulesPage() {
   useEffect(() => {
     loadRules();
   }, [loadRules]);
+
+  const loadAllRoleDefinitions = useCallback(async () => {
+    if (!institutionId) { setRoleDefinitions([]); return; }
+    try {
+      const all: RoleDefinition[] = [];
+      let page = 1;
+      while (true) {
+        const response = await organizationService.getRoleDefinitions({ institution: institutionId, page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setRoleDefinitions(all);
+    } catch {
+      setRoleDefinitions([]);
+    }
+  }, [institutionId]);
+
+  const loadAllUnitTypes = useCallback(async () => {
+    if (!institutionId) { setUnitTypes([]); return; }
+    try {
+      const all: UnitType[] = [];
+      let page = 1;
+      while (true) {
+        const response = await organizationService.getUnitTypes({ institution: institutionId, page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setUnitTypes(all);
+    } catch {
+      setUnitTypes([]);
+    }
+  }, [institutionId]);
+
+  useEffect(() => {
+    loadAllRoleDefinitions();
+  }, [loadAllRoleDefinitions]);
+
+  useEffect(() => {
+    loadAllUnitTypes();
+  }, [loadAllUnitTypes]);
 
   const handleCreate = async (data: Record<string, unknown>) => {
     setIsSubmitting(true);

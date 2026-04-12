@@ -36,23 +36,15 @@ export default function AssignmentsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [assignmentsResponse, positionsResponse, unitsResponse, rolesResponse] = await Promise.all([
-        organizationService.getAssignments({
-          institution: institutionId,
-          organizationalUnit: filters.organizationalUnit as string | undefined,
-          position: filters.position as string | undefined,
-          roleDefinition: filters.roleDefinition as string | undefined,
-          isActive: filters.isActive as boolean | undefined,
-          page: currentPage,
-        }),
-        organizationService.getPositions({ institution: institutionId }),
-        organizationService.getUnits({ institution: institutionId }),
-        organizationService.getRoleDefinitions({ institution: institutionId }),
-      ]);
+      const assignmentsResponse = await organizationService.getAssignments({
+        institution: institutionId,
+        organizationalUnit: filters.organizationalUnit as string | undefined,
+        position: filters.position as string | undefined,
+        roleDefinition: filters.roleDefinition as string | undefined,
+        isActive: filters.isActive as boolean | undefined,
+        page: currentPage,
+      });
       setAssignments(assignmentsResponse.results);
-      setPositions(positionsResponse.results);
-      setUnits(unitsResponse.results);
-      setRoleDefinitions(rolesResponse.results);
       setTotalItems(assignmentsResponse.count);
       setHasNextPage(Boolean(assignmentsResponse.next));
       setHasPreviousPage(Boolean(assignmentsResponse.previous));
@@ -66,6 +58,69 @@ export default function AssignmentsPage() {
   useEffect(() => {
     loadAssignments();
   }, [loadAssignments]);
+
+  const loadAllPositions = useCallback(async () => {
+    if (!institutionId) { setPositions([]); return; }
+    try {
+      const all: Position[] = [];
+      let page = 1;
+      while (true) {
+        const response = await organizationService.getPositions({ institution: institutionId, page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setPositions(all);
+    } catch {
+      setPositions([]);
+    }
+  }, [institutionId]);
+
+  const loadAllUnitsForDropdown = useCallback(async () => {
+    if (!institutionId) { setUnits([]); return; }
+    try {
+      const all: Unit[] = [];
+      let page = 1;
+      while (true) {
+        const response = await organizationService.getUnits({ institution: institutionId, page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setUnits(all);
+    } catch {
+      setUnits([]);
+    }
+  }, [institutionId]);
+
+  const loadAllRoleDefinitions = useCallback(async () => {
+    if (!institutionId) { setRoleDefinitions([]); return; }
+    try {
+      const all: RoleDefinition[] = [];
+      let page = 1;
+      while (true) {
+        const response = await organizationService.getRoleDefinitions({ institution: institutionId, page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setRoleDefinitions(all);
+    } catch {
+      setRoleDefinitions([]);
+    }
+  }, [institutionId]);
+
+  useEffect(() => {
+    loadAllPositions();
+  }, [loadAllPositions]);
+
+  useEffect(() => {
+    loadAllUnitsForDropdown();
+  }, [loadAllUnitsForDropdown]);
+
+  useEffect(() => {
+    loadAllRoleDefinitions();
+  }, [loadAllRoleDefinitions]);
 
   const handleCreate = async (data: Record<string, unknown>) => {
     setIsSubmitting(true);

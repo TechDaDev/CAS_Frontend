@@ -43,14 +43,12 @@ export default function CommitteeDetailPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [committeeData, membersData, assignmentsData] = await Promise.all([
+      const [committeeData, membersData] = await Promise.all([
         committeesService.getCommittee(committeeId),
         committeesService.getCommitteeMembersByCommitteeId(committeeId, currentPage),
-        organizationService.getAssignments({}),
       ]);
       setCommittee(committeeData);
       setMembers(membersData.results);
-      setAssignments(assignmentsData.results);
       setTotalItems(membersData.count);
       setHasNextPage(Boolean(membersData.next));
       setHasPreviousPage(Boolean(membersData.previous));
@@ -71,6 +69,26 @@ export default function CommitteeDetailPage() {
   useEffect(() => {
     loadCommittee();
   }, [loadCommittee]);
+
+  const loadAllAssignments = useCallback(async () => {
+    try {
+      const all: Assignment[] = [];
+      let page = 1;
+      while (true) {
+        const response = await organizationService.getAssignments({ page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setAssignments(all);
+    } catch {
+      setAssignments([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAllAssignments();
+  }, [loadAllAssignments]);
 
   const handleCreateMember = async (data: Record<string, unknown>) => {
     if (!committee) return;

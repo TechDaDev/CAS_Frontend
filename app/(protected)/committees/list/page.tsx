@@ -36,21 +36,15 @@ export default function CommitteesListPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [committeesResponse, typesResponse, unitsResponse] = await Promise.all([
-        committeesService.getCommittees({
-          institution: institutionId,
-          committeeType: filters.committeeType as string | undefined,
-          scopeUnit: filters.scopeUnit as string | undefined,
-          status: filters.status as string | undefined,
-          isActive: filters.isActive as boolean | undefined,
-          page: currentPage,
-        }),
-        committeesService.getCommitteeTypes({ institution: institutionId }),
-        organizationService.getUnits({ institution: institutionId }),
-      ]);
+      const committeesResponse = await committeesService.getCommittees({
+        institution: institutionId,
+        committeeType: filters.committeeType as string | undefined,
+        scopeUnit: filters.scopeUnit as string | undefined,
+        status: filters.status as string | undefined,
+        isActive: filters.isActive as boolean | undefined,
+        page: currentPage,
+      });
       setCommittees(committeesResponse.results);
-      setCommitteeTypes(typesResponse.results);
-      setUnits(unitsResponse.results);
       setTotalItems(committeesResponse.count);
       setHasNextPage(Boolean(committeesResponse.next));
       setHasPreviousPage(Boolean(committeesResponse.previous));
@@ -64,6 +58,48 @@ export default function CommitteesListPage() {
   useEffect(() => {
     loadCommittees();
   }, [loadCommittees]);
+
+  const loadAllCommitteeTypes = useCallback(async () => {
+    if (!institutionId) { setCommitteeTypes([]); return; }
+    try {
+      const all: CommitteeType[] = [];
+      let page = 1;
+      while (true) {
+        const response = await committeesService.getCommitteeTypes({ institution: institutionId, page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setCommitteeTypes(all);
+    } catch {
+      setCommitteeTypes([]);
+    }
+  }, [institutionId]);
+
+  const loadAllUnitsForDropdown = useCallback(async () => {
+    if (!institutionId) { setUnits([]); return; }
+    try {
+      const all: Unit[] = [];
+      let page = 1;
+      while (true) {
+        const response = await organizationService.getUnits({ institution: institutionId, page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setUnits(all);
+    } catch {
+      setUnits([]);
+    }
+  }, [institutionId]);
+
+  useEffect(() => {
+    loadAllCommitteeTypes();
+  }, [loadAllCommitteeTypes]);
+
+  useEffect(() => {
+    loadAllUnitsForDropdown();
+  }, [loadAllUnitsForDropdown]);
 
   const handleCreate = async (data: Record<string, unknown>) => {
     setIsSubmitting(true);

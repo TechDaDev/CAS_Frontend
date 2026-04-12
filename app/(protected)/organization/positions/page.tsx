@@ -35,20 +35,14 @@ export default function PositionsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [positionsResponse, typesResponse, unitsResponse] = await Promise.all([
-        organizationService.getPositions({
-          institution: institutionId,
-          organizationalUnit: filters.organizationalUnit as string | undefined,
-          positionType: filters.positionType as string | undefined,
-          isActive: filters.isActive as boolean | undefined,
-          page: currentPage,
-        }),
-        organizationService.getPositionTypes({ institution: institutionId }),
-        organizationService.getUnits({ institution: institutionId }),
-      ]);
+      const positionsResponse = await organizationService.getPositions({
+        institution: institutionId,
+        organizationalUnit: filters.organizationalUnit as string | undefined,
+        positionType: filters.positionType as string | undefined,
+        isActive: filters.isActive as boolean | undefined,
+        page: currentPage,
+      });
       setPositions(positionsResponse.results);
-      setPositionTypes(typesResponse.results);
-      setUnits(unitsResponse.results);
       setTotalItems(positionsResponse.count);
       setHasNextPage(Boolean(positionsResponse.next));
       setHasPreviousPage(Boolean(positionsResponse.previous));
@@ -62,6 +56,48 @@ export default function PositionsPage() {
   useEffect(() => {
     loadPositions();
   }, [loadPositions]);
+
+  const loadAllPositionTypes = useCallback(async () => {
+    if (!institutionId) { setPositionTypes([]); return; }
+    try {
+      const all: PositionType[] = [];
+      let page = 1;
+      while (true) {
+        const response = await organizationService.getPositionTypes({ institution: institutionId, page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setPositionTypes(all);
+    } catch {
+      setPositionTypes([]);
+    }
+  }, [institutionId]);
+
+  const loadAllUnitsForDropdown = useCallback(async () => {
+    if (!institutionId) { setUnits([]); return; }
+    try {
+      const all: Unit[] = [];
+      let page = 1;
+      while (true) {
+        const response = await organizationService.getUnits({ institution: institutionId, page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setUnits(all);
+    } catch {
+      setUnits([]);
+    }
+  }, [institutionId]);
+
+  useEffect(() => {
+    loadAllPositionTypes();
+  }, [loadAllPositionTypes]);
+
+  useEffect(() => {
+    loadAllUnitsForDropdown();
+  }, [loadAllUnitsForDropdown]);
 
   const handleCreate = async (data: Record<string, unknown>) => {
     setIsSubmitting(true);

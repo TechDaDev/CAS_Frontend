@@ -43,18 +43,12 @@ export default function CommitteeMembersPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [membersResponse, committeesResponse, assignmentsResponse] = await Promise.all([
-        committeesService.getCommitteeMembers({
-          committee: filters.committee as string | undefined,
-          isActive: filters.isActive as boolean | undefined,
-          page: currentPage,
-        }),
-        committeesService.getCommittees({ institution: institutionId }),
-        organizationService.getAssignments({ institution: institutionId }),
-      ]);
+      const membersResponse = await committeesService.getCommitteeMembers({
+        committee: filters.committee as string | undefined,
+        isActive: filters.isActive as boolean | undefined,
+        page: currentPage,
+      });
       setMembers(membersResponse.results);
-      setCommittees(committeesResponse.results);
-      setAssignments(assignmentsResponse.results);
       setTotalItems(membersResponse.count);
       setHasNextPage(Boolean(membersResponse.next));
       setHasPreviousPage(Boolean(membersResponse.previous));
@@ -68,6 +62,48 @@ export default function CommitteeMembersPage() {
   useEffect(() => {
     loadMembers();
   }, [loadMembers]);
+
+  const loadAllCommittees = useCallback(async () => {
+    if (!institutionId) { setCommittees([]); return; }
+    try {
+      const all: Committee[] = [];
+      let page = 1;
+      while (true) {
+        const response = await committeesService.getCommittees({ institution: institutionId, page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setCommittees(all);
+    } catch {
+      setCommittees([]);
+    }
+  }, [institutionId]);
+
+  const loadAllAssignments = useCallback(async () => {
+    if (!institutionId) { setAssignments([]); return; }
+    try {
+      const all: Assignment[] = [];
+      let page = 1;
+      while (true) {
+        const response = await organizationService.getAssignments({ institution: institutionId, page });
+        all.push(...response.results);
+        if (!response.next) break;
+        page++;
+      }
+      setAssignments(all);
+    } catch {
+      setAssignments([]);
+    }
+  }, [institutionId]);
+
+  useEffect(() => {
+    loadAllCommittees();
+  }, [loadAllCommittees]);
+
+  useEffect(() => {
+    loadAllAssignments();
+  }, [loadAllAssignments]);
 
   const handleCreate = async (data: Record<string, unknown>) => {
     setIsSubmitting(true);
