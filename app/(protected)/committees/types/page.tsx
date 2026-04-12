@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { EntityTable, Column } from '@/components/management/EntityTable';
 import { EntityFormModal } from '@/components/management/EntityFormModal';
 import { FilterBar } from '@/components/management/FilterBar';
+import { PaginationControls } from '@/components/PaginationControls';
 import Link from 'next/link';
 
 export default function CommitteeTypesPage() {
@@ -20,6 +21,10 @@ export default function CommitteeTypesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [filters, setFilters] = useState<Record<string, string | boolean>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   const institutionId = user?.institution_id || '';
 
@@ -31,14 +36,18 @@ export default function CommitteeTypesPage() {
       const response = await committeesService.getCommitteeTypes({
         institution: institutionId,
         isActive: filters.isActive as boolean | undefined,
+        page: currentPage,
       });
       setCommitteeTypes(response.results);
+      setTotalItems(response.count);
+      setHasNextPage(Boolean(response.next));
+      setHasPreviousPage(Boolean(response.previous));
     } catch {
       setError('فشل تحميل أنواع اللجان');
     } finally {
       setIsLoading(false);
     }
-  }, [institutionId, filters.isActive]);
+  }, [institutionId, filters.isActive, currentPage]);
 
   useEffect(() => {
     loadCommitteeTypes();
@@ -147,7 +156,14 @@ export default function CommitteeTypesPage() {
       </div>
 
       <div className="mb-4">
-        <FilterBar fields={filterFields} onFilter={setFilters} initialFilters={filters} />
+        <FilterBar
+          fields={filterFields}
+          onFilter={(nextFilters) => {
+            setCurrentPage(1);
+            setFilters(nextFilters);
+          }}
+          initialFilters={filters}
+        />
       </div>
 
       {error && (
@@ -161,6 +177,15 @@ export default function CommitteeTypesPage() {
         data={committeeTypes}
         keyExtractor={(item) => item.id}
         onEdit={handleEdit}
+        isLoading={isLoading}
+      />
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalItems={totalItems}
+        hasNextPage={hasNextPage}
+        hasPreviousPage={hasPreviousPage}
+        onPageChange={setCurrentPage}
         isLoading={isLoading}
       />
 

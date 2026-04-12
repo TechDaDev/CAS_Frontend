@@ -14,6 +14,7 @@ import { UserCategoryBadge } from '@/components/institution-users/UserCategoryBa
 import { InstitutionUserFormModal } from '@/components/institution-users/InstitutionUserFormModal';
 import { FallbackImage } from '@/components/common/FallbackImage';
 import { PageHeader } from '@/components/PageHeader';
+import { PaginationControls } from '@/components/PaginationControls';
 
 type FeedbackState = {
   type: 'success' | 'error';
@@ -33,6 +34,10 @@ export default function InstitutionUsersPage() {
   const [categoryFilter, setCategoryFilter] = useState<UserCategory | ''>('');
   const [activeFilter, setActiveFilter] = useState<boolean | null>(null);
   const [institutionFilter, setInstitutionFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   const canSelectInstitution = !!user?.is_superuser;
 
@@ -45,8 +50,12 @@ export default function InstitutionUsersPage() {
         user_category: (categoryFilter as UserCategory) || undefined,
         is_active: activeFilter ?? undefined,
         institution: canSelectInstitution ? institutionFilter || undefined : undefined,
+        page: currentPage,
       });
       setInstitutionUsers(response.results);
+      setTotalItems(response.count);
+      setHasNextPage(Boolean(response.next));
+      setHasPreviousPage(Boolean(response.previous));
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         setError('لا تملك صلاحية عرض مستخدمي المؤسسة.');
@@ -56,7 +65,7 @@ export default function InstitutionUsersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeFilter, canSelectInstitution, categoryFilter, institutionFilter, searchQuery]);
+  }, [activeFilter, canSelectInstitution, categoryFilter, institutionFilter, searchQuery, currentPage]);
 
   const loadInstitutions = useCallback(async () => {
     if (!user?.is_superuser) {
@@ -155,14 +164,20 @@ export default function InstitutionUsersPage() {
             type="text"
             placeholder="البحث بالاسم أو البريد الإلكتروني..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setCurrentPage(1);
+              setSearchQuery(e.target.value);
+            }}
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
         {canSelectInstitution && (
           <select
             value={institutionFilter}
-            onChange={(e) => setInstitutionFilter(e.target.value)}
+            onChange={(e) => {
+              setCurrentPage(1);
+              setInstitutionFilter(e.target.value);
+            }}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             <option value="">جميع المؤسسات</option>
@@ -175,7 +190,10 @@ export default function InstitutionUsersPage() {
         )}
         <select
           value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value as UserCategory | '')}
+          onChange={(e) => {
+            setCurrentPage(1);
+            setCategoryFilter(e.target.value as UserCategory | '');
+          }}
           className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="">جميع الفئات</option>
@@ -186,6 +204,7 @@ export default function InstitutionUsersPage() {
           value={activeFilter === null ? '' : String(activeFilter)}
           onChange={(e) => {
             const value = e.target.value;
+            setCurrentPage(1);
             setActiveFilter(value === '' ? null : value === 'true');
           }}
           className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -292,6 +311,15 @@ export default function InstitutionUsersPage() {
           </table>
         </div>
       )}
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalItems={totalItems}
+        hasNextPage={hasNextPage}
+        hasPreviousPage={hasPreviousPage}
+        onPageChange={setCurrentPage}
+        isLoading={isLoading}
+      />
 
       <InstitutionUserFormModal
         isOpen={isModalOpen}

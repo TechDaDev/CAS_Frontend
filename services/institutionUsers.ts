@@ -26,12 +26,14 @@ export const institutionUsersService = {
     user_category?: UserCategory;
     is_active?: boolean;
     institution?: string;
+    page?: number;
   }): Promise<PaginatedResponse<InstitutionUser>> {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append('search', params.search);
     if (params?.user_category) queryParams.append('user_category', params.user_category);
     if (params?.is_active !== undefined) queryParams.append('is_active', String(params.is_active));
     if (params?.institution) queryParams.append('institution', params.institution);
+    if (params?.page) queryParams.append('page', String(params.page));
 
     const query = queryParams.toString();
     return api.get<PaginatedResponse<InstitutionUser>>(`/accounts/institution-users/${query ? `?${query}` : ''}`);

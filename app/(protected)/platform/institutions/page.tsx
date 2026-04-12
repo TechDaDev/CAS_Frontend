@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { institutionsService } from '@/services/institutions';
@@ -10,6 +10,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
 import Link from 'next/link';
 import { InstitutionFormModal } from '@/components/platform/InstitutionFormModal';
+import { PaginationControls } from '@/components/PaginationControls';
 
 type FeedbackState = {
   type: 'success' | 'error';
@@ -28,22 +29,30 @@ export default function InstitutionsListPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<boolean | null>(null);
   const [statusActionId, setStatusActionId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
-  const loadInstitutions = async () => {
+  const loadInstitutions = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       const response = await institutionsService.listInstitutions({
         search: searchQuery || undefined,
         is_active: activeFilter ?? undefined,
+        page: currentPage,
       });
       setInstitutions(response.results);
+      setTotalItems(response.count);
+      setHasNextPage(Boolean(response.next));
+      setHasPreviousPage(Boolean(response.previous));
     } catch {
       setError('فشل تحميل المؤسسات');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [searchQuery, activeFilter, currentPage]);
 
   useEffect(() => {
     if (!authLoading && !user?.is_superuser) {
@@ -54,7 +63,7 @@ export default function InstitutionsListPage() {
     if (user?.is_superuser) {
       loadInstitutions();
     }
-  }, [user, authLoading, router, searchQuery, activeFilter]);
+  }, [user, authLoading, router, loadInstitutions]);
 
   const handleInstitutionSaved = async () => {
     const wasEditing = !!selectedInstitution;
@@ -159,7 +168,10 @@ export default function InstitutionsListPage() {
             title="البحث عن مؤسسة"
             placeholder="البحث باسم أو رمز المؤسسة..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setCurrentPage(1);
+              setSearchQuery(e.target.value);
+            }}
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
@@ -169,6 +181,7 @@ export default function InstitutionsListPage() {
           value={activeFilter === null ? '' : String(activeFilter)}
           onChange={(e) => {
             const value = e.target.value;
+            setCurrentPage(1);
             setActiveFilter(value === '' ? null : value === 'true');
           }}
           className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -288,6 +301,15 @@ export default function InstitutionsListPage() {
           </table>
         </div>
       )}
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalItems={totalItems}
+        hasNextPage={hasNextPage}
+        hasPreviousPage={hasPreviousPage}
+        onPageChange={setCurrentPage}
+        isLoading={isLoading}
+      />
 
       <InstitutionFormModal
         isOpen={isModalOpen}

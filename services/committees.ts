@@ -121,8 +121,11 @@ class CommitteesService {
     return api.get<PaginatedResponse<CommitteeMember>>('/committees/members/', params);
   }
 
-  async getCommitteeMembersByCommitteeId(committeeId: string): Promise<PaginatedResponse<CommitteeMember>> {
-    return api.get<PaginatedResponse<CommitteeMember>>(`/committees/${committeeId}/members/`);
+  async getCommitteeMembersByCommitteeId(committeeId: string, page?: number): Promise<PaginatedResponse<CommitteeMember>> {
+    const params: Record<string, string> = {};
+    if (page) params.page = page.toString();
+
+    return api.get<PaginatedResponse<CommitteeMember>>(`/committees/${committeeId}/members/`, params);
   }
 
   async createCommitteeMember(payload: CreateCommitteeMemberPayload): Promise<CommitteeMember> {

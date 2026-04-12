@@ -36,10 +36,11 @@ interface UpdateInstitutionOptions {
 }
 
 export const institutionsService = {
-  async listInstitutions(params?: { search?: string; is_active?: boolean }): Promise<PaginatedResponse<Institution>> {
+  async listInstitutions(params?: { search?: string; is_active?: boolean; page?: number }): Promise<PaginatedResponse<Institution>> {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append('search', params.search);
     if (params?.is_active !== undefined) queryParams.append('is_active', String(params.is_active));
+    if (params?.page) queryParams.append('page', String(params.page));
     
     const query = queryParams.toString();
     return api.get<PaginatedResponse<Institution>>(`/institutions/${query ? `?${query}` : ''}`);

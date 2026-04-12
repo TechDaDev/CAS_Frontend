@@ -6,8 +6,8 @@ import { notificationsService } from '@/services/notifications';
 import { PageHeader } from '@/components/PageHeader';
 import { NotificationList } from '@/components/notifications/NotificationList';
 import { NotificationFilters } from '@/components/notifications/NotificationFilters';
-import { ErrorState } from '@/components/ErrorState';
-import { uiLabels, notificationCategoryLabels } from '@/lib/ui-ar';
+import { PaginationControls } from '@/components/PaginationControls';
+import { notificationCategoryLabels } from '@/lib/ui-ar';
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -19,6 +19,10 @@ export default function NotificationsPage() {
     isRead?: boolean;
     category?: NotificationCategory;
   }>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   const loadNotifications = useCallback(async () => {
     setIsLoading(true);
@@ -27,14 +31,18 @@ export default function NotificationsPage() {
       const response = await notificationsService.getNotifications({
         isRead: filters.isRead,
         category: filters.category,
+        page: currentPage,
       });
       setNotifications(response.results);
-    } catch (err) {
+      setTotalItems(response.count);
+      setHasNextPage(Boolean(response.next));
+      setHasPreviousPage(Boolean(response.previous));
+    } catch {
       setError('فشل تحميل الإشعارات');
     } finally {
       setIsLoading(false);
     }
-  }, [filters.isRead, filters.category]);
+  }, [filters.isRead, filters.category, currentPage]);
 
   useEffect(() => {
     loadNotifications();
@@ -46,7 +54,7 @@ export default function NotificationsPage() {
       setNotifications(prev => 
         prev.map(n => n.id === id ? { ...n, is_read: true, read_at: new Date().toISOString() } : n)
       );
-    } catch (err) {
+    } catch {
       // Error handled silently - UI already updated optimistically
     }
   };
@@ -58,7 +66,7 @@ export default function NotificationsPage() {
       setNotifications(prev => 
         prev.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
       );
-    } catch (err) {
+    } catch {
       setError('فشل تحديد جميع الإشعارات كمقروءة');
     } finally {
       setIsMarkingAll(false);
@@ -79,7 +87,13 @@ export default function NotificationsPage() {
       />
 
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <NotificationFilters filters={filters} onFilterChange={setFilters} />
+        <NotificationFilters
+          filters={filters}
+          onFilterChange={(nextFilters) => {
+            setCurrentPage(1);
+            setFilters(nextFilters);
+          }}
+        />
         
         {unreadCount > 0 && (
           <button
@@ -111,6 +125,15 @@ export default function NotificationsPage() {
               ? `لا توجد إشعارات ${notificationCategoryLabels[filters.category] || filters.category}` 
               : 'لا توجد إشعارات'
         }
+      />
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalItems={totalItems}
+        hasNextPage={hasNextPage}
+        hasPreviousPage={hasPreviousPage}
+        onPageChange={setCurrentPage}
+        isLoading={isLoading}
       />
     </div>
   );

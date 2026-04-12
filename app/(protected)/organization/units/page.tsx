@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { EntityTable, Column } from '@/components/management/EntityTable';
 import { EntityFormModal } from '@/components/management/EntityFormModal';
 import { FilterBar } from '@/components/management/FilterBar';
+import { PaginationControls } from '@/components/PaginationControls';
 import Link from 'next/link';
 
 export default function UnitsPage() {
@@ -21,6 +22,10 @@ export default function UnitsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [filters, setFilters] = useState<Record<string, string | boolean>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   const institutionId = user?.institution_id || '';
 
@@ -34,17 +39,21 @@ export default function UnitsPage() {
           institution: institutionId,
           unitType: filters.unitType as string | undefined,
           isActive: filters.isActive as boolean | undefined,
+          page: currentPage,
         }),
         organizationService.getUnitTypes({ institution: institutionId }),
       ]);
       setUnits(unitsResponse.results);
       setUnitTypes(typesResponse.results);
+      setTotalItems(unitsResponse.count);
+      setHasNextPage(Boolean(unitsResponse.next));
+      setHasPreviousPage(Boolean(unitsResponse.previous));
     } catch {
       setError('Failed to load units');
     } finally {
       setIsLoading(false);
     }
-  }, [institutionId, filters.unitType, filters.isActive]);
+  }, [institutionId, filters.unitType, filters.isActive, currentPage]);
 
   useEffect(() => {
     loadUnits();
@@ -183,7 +192,14 @@ export default function UnitsPage() {
       </div>
 
       <div className="mb-4">
-        <FilterBar fields={filterFields} onFilter={setFilters} initialFilters={filters} />
+        <FilterBar
+          fields={filterFields}
+          onFilter={(nextFilters) => {
+            setCurrentPage(1);
+            setFilters(nextFilters);
+          }}
+          initialFilters={filters}
+        />
       </div>
 
       {error && (
@@ -197,6 +213,15 @@ export default function UnitsPage() {
         data={units}
         keyExtractor={(item) => item.id}
         onEdit={handleEdit}
+        isLoading={isLoading}
+      />
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalItems={totalItems}
+        hasNextPage={hasNextPage}
+        hasPreviousPage={hasPreviousPage}
+        onPageChange={setCurrentPage}
         isLoading={isLoading}
       />
 

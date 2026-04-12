@@ -10,7 +10,7 @@ import { AuditLogDetailPanel } from '@/components/audit/AuditLogDetailPanel';
 import { RestrictedState } from '@/components/common/RestrictedState';
 import { LoadingState } from '@/components/LoadingState';
 import { EmptyState } from '@/components/EmptyState';
-import { uiLabels } from '@/lib/ui-ar';
+import { PaginationControls } from '@/components/PaginationControls';
 
 export default function AuditPage() {
   const { user } = useAuth();
@@ -24,6 +24,10 @@ export default function AuditPage() {
     actor?: string;
     objectType?: string;
   }>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   const institutionId = user?.institution_id || '';
 
@@ -38,8 +42,12 @@ export default function AuditPage() {
         action: filters.action,
         actor: filters.actor,
         objectType: filters.objectType,
+        page: currentPage,
       });
       setLogs(response.results);
+      setTotalItems(response.count);
+      setHasNextPage(Boolean(response.next));
+      setHasPreviousPage(Boolean(response.previous));
     } catch (err: unknown) {
       const apiError = err as { status?: number };
       if (apiError.status === 403) {
@@ -50,7 +58,7 @@ export default function AuditPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [institutionId, filters.action, filters.actor, filters.objectType]);
+  }, [institutionId, filters.action, filters.actor, filters.objectType, currentPage]);
 
   useEffect(() => {
     loadAuditLogs();
@@ -84,25 +92,37 @@ export default function AuditPage() {
             type="text"
             placeholder="تصفية حسب الإجراء..."
             value={filters.action || ''}
-            onChange={(e) => setFilters(prev => ({ ...prev, action: e.target.value || undefined }))}
+            onChange={(e) => {
+              setCurrentPage(1);
+              setFilters(prev => ({ ...prev, action: e.target.value || undefined }));
+            }}
             className="rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
           />
           <input
             type="text"
             placeholder="تصفية حسب المستخدم..."
             value={filters.actor || ''}
-            onChange={(e) => setFilters(prev => ({ ...prev, actor: e.target.value || undefined }))}
+            onChange={(e) => {
+              setCurrentPage(1);
+              setFilters(prev => ({ ...prev, actor: e.target.value || undefined }));
+            }}
             className="rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
           />
           <input
             type="text"
             placeholder="تصفية حسب نوع الكائن..."
             value={filters.objectType || ''}
-            onChange={(e) => setFilters(prev => ({ ...prev, objectType: e.target.value || undefined }))}
+            onChange={(e) => {
+              setCurrentPage(1);
+              setFilters(prev => ({ ...prev, objectType: e.target.value || undefined }));
+            }}
             className="rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
           />
           <button
-            onClick={() => setFilters({})}
+            onClick={() => {
+              setCurrentPage(1);
+              setFilters({});
+            }}
             className="text-sm text-slate-500 hover:text-slate-700"
           >
             مسح التصفية
@@ -129,6 +149,15 @@ export default function AuditPage() {
               selectedId={selectedLog?.id}
             />
           )}
+
+          <PaginationControls
+            currentPage={currentPage}
+            totalItems={totalItems}
+            hasNextPage={hasNextPage}
+            hasPreviousPage={hasPreviousPage}
+            onPageChange={setCurrentPage}
+            isLoading={isLoading}
+          />
         </div>
 
         <div className="lg:col-span-1">

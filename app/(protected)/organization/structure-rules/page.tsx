@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { EntityTable, Column } from '@/components/management/EntityTable';
 import { EntityFormModal } from '@/components/management/EntityFormModal';
 import { FilterBar } from '@/components/management/FilterBar';
+import { PaginationControls } from '@/components/PaginationControls';
 import Link from 'next/link';
 
 export default function StructureRulesPage() {
@@ -22,6 +23,10 @@ export default function StructureRulesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [filters, setFilters] = useState<Record<string, string | boolean>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   const institutionId = user?.institution_id || '';
 
@@ -36,6 +41,7 @@ export default function StructureRulesPage() {
           roleDefinition: filters.roleDefinition as string | undefined,
           action: filters.action as string | undefined,
           isActive: filters.isActive as boolean | undefined,
+          page: currentPage,
         }),
         organizationService.getRoleDefinitions({ institution: institutionId }),
         organizationService.getUnitTypes({ institution: institutionId }),
@@ -43,12 +49,15 @@ export default function StructureRulesPage() {
       setRules(rulesResponse.results);
       setRoleDefinitions(rolesResponse.results);
       setUnitTypes(typesResponse.results);
+      setTotalItems(rulesResponse.count);
+      setHasNextPage(Boolean(rulesResponse.next));
+      setHasPreviousPage(Boolean(rulesResponse.previous));
     } catch {
       setError('فشل تحميل قواعد الهيكل');
     } finally {
       setIsLoading(false);
     }
-  }, [institutionId, filters.roleDefinition, filters.action, filters.isActive]);
+  }, [institutionId, filters.roleDefinition, filters.action, filters.isActive, currentPage]);
 
   useEffect(() => {
     loadRules();
@@ -201,7 +210,14 @@ export default function StructureRulesPage() {
       </div>
 
       <div className="mb-4">
-        <FilterBar fields={filterFields} onFilter={setFilters} initialFilters={filters} />
+        <FilterBar
+          fields={filterFields}
+          onFilter={(nextFilters) => {
+            setCurrentPage(1);
+            setFilters(nextFilters);
+          }}
+          initialFilters={filters}
+        />
       </div>
 
       {error && (
@@ -215,6 +231,15 @@ export default function StructureRulesPage() {
         data={rules}
         keyExtractor={(item) => item.id}
         onEdit={handleEdit}
+        isLoading={isLoading}
+      />
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalItems={totalItems}
+        hasNextPage={hasNextPage}
+        hasPreviousPage={hasPreviousPage}
+        onPageChange={setCurrentPage}
         isLoading={isLoading}
       />
 

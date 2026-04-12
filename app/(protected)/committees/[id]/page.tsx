@@ -8,6 +8,7 @@ import { organizationService } from '@/services/organization';
 import { PageHeader } from '@/components/PageHeader';
 import { EntityTable, Column } from '@/components/management/EntityTable';
 import { EntityFormModal } from '@/components/management/EntityFormModal';
+import { PaginationControls } from '@/components/PaginationControls';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import Link from 'next/link';
@@ -32,6 +33,10 @@ export default function CommitteeDetailPage() {
   const [editingMember, setEditingMember] = useState<CommitteeMember | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   const loadCommittee = useCallback(async () => {
     if (!committeeId) return;
@@ -40,12 +45,15 @@ export default function CommitteeDetailPage() {
     try {
       const [committeeData, membersData, assignmentsData] = await Promise.all([
         committeesService.getCommittee(committeeId),
-        committeesService.getCommitteeMembersByCommitteeId(committeeId),
+        committeesService.getCommitteeMembersByCommitteeId(committeeId, currentPage),
         organizationService.getAssignments({}),
       ]);
       setCommittee(committeeData);
       setMembers(membersData.results);
       setAssignments(assignmentsData.results);
+      setTotalItems(membersData.count);
+      setHasNextPage(Boolean(membersData.next));
+      setHasPreviousPage(Boolean(membersData.previous));
     } catch (err: unknown) {
       const apiError = err as { status?: number };
       if (apiError.status === 404) {
@@ -58,7 +66,7 @@ export default function CommitteeDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [committeeId]);
+  }, [committeeId, currentPage]);
 
   useEffect(() => {
     loadCommittee();
@@ -257,6 +265,15 @@ export default function CommitteeDetailPage() {
           data={members}
           keyExtractor={(item) => item.id}
           onEdit={handleEditMember}
+          isLoading={isLoading}
+        />
+
+        <PaginationControls
+          currentPage={currentPage}
+          totalItems={totalItems}
+          hasNextPage={hasNextPage}
+          hasPreviousPage={hasPreviousPage}
+          onPageChange={setCurrentPage}
           isLoading={isLoading}
         />
       </div>

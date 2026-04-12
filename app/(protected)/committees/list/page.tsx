@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { EntityTable, Column } from '@/components/management/EntityTable';
 import { EntityFormModal } from '@/components/management/EntityFormModal';
 import { FilterBar } from '@/components/management/FilterBar';
+import { PaginationControls } from '@/components/PaginationControls';
 import Link from 'next/link';
 
 export default function CommitteesListPage() {
@@ -23,6 +24,10 @@ export default function CommitteesListPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [filters, setFilters] = useState<Record<string, string | boolean>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   const institutionId = user?.institution_id || '';
 
@@ -38,6 +43,7 @@ export default function CommitteesListPage() {
           scopeUnit: filters.scopeUnit as string | undefined,
           status: filters.status as string | undefined,
           isActive: filters.isActive as boolean | undefined,
+          page: currentPage,
         }),
         committeesService.getCommitteeTypes({ institution: institutionId }),
         organizationService.getUnits({ institution: institutionId }),
@@ -45,12 +51,15 @@ export default function CommitteesListPage() {
       setCommittees(committeesResponse.results);
       setCommitteeTypes(typesResponse.results);
       setUnits(unitsResponse.results);
+      setTotalItems(committeesResponse.count);
+      setHasNextPage(Boolean(committeesResponse.next));
+      setHasPreviousPage(Boolean(committeesResponse.previous));
     } catch {
       setError('فشل تحميل اللجان');
     } finally {
       setIsLoading(false);
     }
-  }, [institutionId, filters.committeeType, filters.scopeUnit, filters.status, filters.isActive]);
+  }, [institutionId, filters.committeeType, filters.scopeUnit, filters.status, filters.isActive, currentPage]);
 
   useEffect(() => {
     loadCommittees();
@@ -230,7 +239,14 @@ export default function CommitteesListPage() {
       </div>
 
       <div className="mb-4">
-        <FilterBar fields={filterFields} onFilter={setFilters} initialFilters={filters} />
+        <FilterBar
+          fields={filterFields}
+          onFilter={(nextFilters) => {
+            setCurrentPage(1);
+            setFilters(nextFilters);
+          }}
+          initialFilters={filters}
+        />
       </div>
 
       {error && (
@@ -244,6 +260,15 @@ export default function CommitteesListPage() {
         data={committees}
         keyExtractor={(item) => item.id}
         onEdit={handleEdit}
+        isLoading={isLoading}
+      />
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalItems={totalItems}
+        hasNextPage={hasNextPage}
+        hasPreviousPage={hasPreviousPage}
+        onPageChange={setCurrentPage}
         isLoading={isLoading}
       />
 
