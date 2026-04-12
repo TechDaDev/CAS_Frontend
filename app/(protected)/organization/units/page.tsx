@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Unit, UnitType } from '@/types';
+import { Unit, UnitTreeNode, UnitType } from '@/types';
 import { organizationService } from '@/services/organization';
 import { PageHeader } from '@/components/PageHeader';
 import { EntityTable, Column } from '@/components/management/EntityTable';
@@ -14,7 +14,7 @@ import Link from 'next/link';
 export default function UnitsPage() {
   const { user } = useAuth();
   const [units, setUnits] = useState<Unit[]>([]);
-  const [parentUnits, setParentUnits] = useState<Unit[]>([]);
+  const [parentUnits, setParentUnits] = useState<Array<Pick<Unit, 'id' | 'name' | 'code'>>>([]);
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,21 +63,19 @@ export default function UnitsPage() {
     }
 
     try {
-      let page = 1;
-      let hasNextPage = true;
-      const allUnits: Unit[] = [];
+      const tree = await organizationService.getUnitTree(institutionId);
+      const allUnits: Array<Pick<Unit, 'id' | 'name' | 'code'>> = [];
 
-      while (hasNextPage) {
-        const response = await organizationService.getUnits({
-          institution: institutionId,
-          page,
-        });
+      const collectNodes = (nodes: UnitTreeNode[]) => {
+        for (const node of nodes) {
+          allUnits.push({ id: node.id, name: node.name, code: node.code });
+          if (node.children.length > 0) {
+            collectNodes(node.children);
+          }
+        }
+      };
 
-        allUnits.push(...response.results);
-        hasNextPage = Boolean(response.next);
-        page += 1;
-      }
-
+      collectNodes(tree);
       setParentUnits(allUnits);
     } catch {
       setParentUnits([]);
