@@ -14,6 +14,7 @@ import Link from 'next/link';
 export default function UnitsPage() {
   const { user } = useAuth();
   const [units, setUnits] = useState<Unit[]>([]);
+  const [parentUnits, setParentUnits] = useState<Unit[]>([]);
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,9 +56,41 @@ export default function UnitsPage() {
     }
   }, [institutionId, filters.unitType, filters.isActive, currentPage]);
 
+  const loadParentUnits = useCallback(async () => {
+    if (!institutionId) {
+      setParentUnits([]);
+      return;
+    }
+
+    try {
+      let page = 1;
+      let hasNextPage = true;
+      const allUnits: Unit[] = [];
+
+      while (hasNextPage) {
+        const response = await organizationService.getUnits({
+          institution: institutionId,
+          page,
+        });
+
+        allUnits.push(...response.results);
+        hasNextPage = Boolean(response.next);
+        page += 1;
+      }
+
+      setParentUnits(allUnits);
+    } catch {
+      setParentUnits([]);
+    }
+  }, [institutionId]);
+
   useEffect(() => {
     loadUnits();
   }, [loadUnits]);
+
+  useEffect(() => {
+    loadParentUnits();
+  }, [loadParentUnits]);
 
   const handleCreate = async (data: Record<string, unknown>) => {
     setIsSubmitting(true);
@@ -74,6 +107,7 @@ export default function UnitsPage() {
         is_active: data.is_active as boolean,
       });
       setIsModalOpen(false);
+      loadParentUnits();
       loadUnits();
     } catch (err: unknown) {
       const apiError = err as { status?: number; data?: Record<string, string[]> };
@@ -107,6 +141,7 @@ export default function UnitsPage() {
       });
       setIsModalOpen(false);
       setEditingUnit(null);
+      loadParentUnits();
       loadUnits();
     } catch (err: unknown) {
       const apiError = err as { status?: number; data?: Record<string, string[]> };
@@ -147,7 +182,10 @@ export default function UnitsPage() {
     { key: 'isActive', label: 'نشط فقط', type: 'checkbox' as const },
   ];
 
-  const unitOptions = units.map((u) => ({ value: u.id, label: `${u.name} (${u.code})` }));
+  const availableParentUnits = editingUnit
+    ? parentUnits.filter((u) => u.id !== editingUnit.id)
+    : parentUnits;
+  const unitOptions = availableParentUnits.map((u) => ({ value: u.id, label: `${u.name} (${u.code})` }));
   const unitTypeOptions = unitTypes.map((t) => ({ value: t.id, label: t.name }));
 
   const formFields = [
