@@ -165,11 +165,12 @@ export default function ProfilePage() {
         updateData.profile_image = profileImageFile;
       }
 
-      const updatedUser = await authService.updateProfile(updateData);
-      setUser(updatedUser);
-      setFirstName(updatedUser.first_name || '');
-      setLastName(updatedUser.last_name || '');
-      setProfileImagePreview(updatedUser.profile_image || null);
+      await authService.updateProfile(updateData);
+      const refreshedUser = await authService.getCurrentUser();
+      setUser(refreshedUser);
+      setFirstName(refreshedUser.first_name || '');
+      setLastName(refreshedUser.last_name || '');
+      setProfileImagePreview(refreshedUser.profile_image || null);
       setProfileImageFile(null);
       setIsEditing(false);
     } catch (err) {
