@@ -333,9 +333,6 @@ export default function ProfilePage() {
         )}
       </div>
 
-      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
-        هذا العرض يدعم تحديث <span className="font-medium text-slate-900">الاسم الأول والاسم الأخير وصورة الملف الشخصي</span> عبر <span className="font-medium text-slate-900">PATCH /api/auth/me/</span>.
-      </div>
     </div>
   );
 }

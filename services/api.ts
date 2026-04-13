@@ -257,22 +257,46 @@ export const authService = {
     last_name?: string;
     profile_image?: File | null;
   }): Promise<CurrentUser> {
-    // Check if profile_image is included
-    if (data.profile_image !== undefined) {
-      const formData = new FormData();
-      if (data.first_name) formData.append('first_name', data.first_name);
-      if (data.last_name) formData.append('last_name', data.last_name);
-      if (data.profile_image instanceof File) {
-        formData.append('profile_image', data.profile_image);
+    const requestWithFallback = async (method: 'PATCH' | 'PUT'): Promise<CurrentUser> => {
+      if (data.profile_image !== undefined) {
+        const formData = new FormData();
+        if (data.first_name !== undefined) formData.append('first_name', data.first_name);
+        if (data.last_name !== undefined) formData.append('last_name', data.last_name);
+        if (data.profile_image instanceof File) {
+          formData.append('profile_image', data.profile_image);
+        }
+        return api.multipart<CurrentUser>('/auth/me/', formData, method);
       }
-      return api.multipart<CurrentUser>('/auth/me/', formData, 'PATCH');
+
+      const payload = {
+        ...(data.first_name !== undefined && { first_name: data.first_name }),
+        ...(data.last_name !== undefined && { last_name: data.last_name }),
+      };
+      if (method === 'PATCH') {
+        return api.patch<CurrentUser>('/auth/me/', payload);
+      }
+      return api.put<CurrentUser>('/auth/me/', payload);
+    };
+
+    if (data.profile_image !== undefined) {
+      try {
+        return await requestWithFallback('PATCH');
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 405) {
+          return requestWithFallback('PUT');
+        }
+        throw error;
+      }
     }
 
-    // No file upload, use regular JSON request
-    return api.patch<CurrentUser>('/auth/me/', {
-      ...(data.first_name !== undefined && { first_name: data.first_name }),
-      ...(data.last_name !== undefined && { last_name: data.last_name }),
-    });
+    try {
+      return await requestWithFallback('PATCH');
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 405) {
+        return requestWithFallback('PUT');
+      }
+      throw error;
+    }
   },
 
   logout(): void {
