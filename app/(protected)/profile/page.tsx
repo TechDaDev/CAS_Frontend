@@ -238,7 +238,6 @@ export default function ProfilePage() {
               <ReadOnlyField label="البريد الإلكتروني" value={user.email} />
               <ReadOnlyField label="الاسم الأول" value={user.first_name || '-'} />
               <ReadOnlyField label="الاسم الأخير" value={user.last_name || '-'} />
-              <ReadOnlyField label="معرف المؤسسة" value={user.institution_id || '-'} />
               <ReadOnlyField label="اسم المؤسسة" value={user.institution_name || '-'} />
               <BooleanField label="الحساب نشط" value={user.is_active} />
               <BooleanField label="عضو فريق العمل" value={user.is_staff} />

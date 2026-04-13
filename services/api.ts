@@ -1,4 +1,4 @@
-import { AuthTokens, LoginCredentials, CurrentUser, InstitutionUser, PaginatedResponse } from '@/types';
+import { AuthTokens, LoginCredentials, CurrentUser } from '@/types';
 
 const isLocalhost = typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
@@ -249,32 +249,7 @@ export const authService = {
   },
 
   async getCurrentUser(): Promise<CurrentUser> {
-    const currentUser = await api.get<CurrentUser>('/auth/me/');
-
-    // Some backends omit profile_image from /auth/me, so enrich from institution users list.
-    if (currentUser.profile_image !== undefined) {
-      return currentUser;
-    }
-
-    try {
-      const usersResponse = await api.get<PaginatedResponse<InstitutionUser>>('/accounts/institution-users/', {
-        search: currentUser.email,
-      });
-      const matchedUser = usersResponse.results.find(
-        (institutionUser) => institutionUser.email.toLowerCase() === currentUser.email.toLowerCase()
-      );
-
-      if (matchedUser) {
-        return {
-          ...currentUser,
-          profile_image: matchedUser.profile_image,
-        };
-      }
-    } catch {
-      // Fall back to the /auth/me payload when institution users lookup is unavailable.
-    }
-
-    return currentUser;
+    return api.get<CurrentUser>('/auth/me/');
   },
 
   async updateProfile(data: {

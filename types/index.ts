@@ -17,7 +17,7 @@ export interface CurrentUser {
   is_active: boolean;
   is_staff: boolean;
   is_superuser: boolean;
-  institution_id: string | null;
+  institution_id?: string | null;
   institution_name: string | null;
   user_category?: UserCategory;
   profile_image?: string | null;
