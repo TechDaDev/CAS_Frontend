@@ -14,12 +14,12 @@ interface NotificationFiltersProps {
 const categories: { value: NotificationCategory | ''; label: string }[] = [
   { value: '', label: 'جميع الفئات' },
   { value: 'routing_received', label: notificationCategoryLabels.routing_received },
-  { value: 'routing_returned', label: notificationCategoryLabels.routing_returned },
-  { value: 'approval_required', label: notificationCategoryLabels.approval_required },
-  { value: 'approved', label: notificationCategoryLabels.approved },
-  { value: 'rejected', label: notificationCategoryLabels.rejected },
-  { value: 'registry_incoming', label: notificationCategoryLabels.registry_incoming },
-  { value: 'dispatch_stage', label: notificationCategoryLabels.dispatch_stage },
+  { value: 'routing_completed', label: notificationCategoryLabels.routing_completed },
+  { value: 'approval_recorded', label: notificationCategoryLabels.approval_recorded },
+  { value: 'registry_registered', label: notificationCategoryLabels.registry_registered },
+  { value: 'dispatch_updated', label: notificationCategoryLabels.dispatch_updated },
+  { value: 'attachment_uploaded', label: notificationCategoryLabels.attachment_uploaded },
+  { value: 'general', label: notificationCategoryLabels.general },
 ];
 
 export function NotificationFilters({ filters, onFilterChange }: NotificationFiltersProps) {

@@ -15,17 +15,18 @@ import { api } from '@/services/api';
 
 export interface TransactionWorkspaceData {
   transaction: Transaction;
-  routingHistory: RoutingAction[];
-  approvalHistory: ApprovalAction[];
+  routingHistory: PaginatedResponse<RoutingAction>;
+  approvalHistory: PaginatedResponse<ApprovalAction>;
   incomingRegistry: IncomingRegistry | null;
   outgoingRegistry: OutgoingRegistry | null;
   printDispatch: PrintDispatch | null;
-  attachments: Attachment[];
-  auditHistory: AuditLog[];
+  attachments: PaginatedResponse<Attachment>;
+  auditHistory: PaginatedResponse<AuditLog>;
   auditAccessDenied: boolean;
 }
 
 export interface TransactionListFilters {
+  pageUrl?: string;
   search?: string;
   status?: TransactionStatus;
   priority?: TransactionPriority;
@@ -36,35 +37,34 @@ export interface TransactionListFilters {
   dueDateFrom?: string;
   dueDateTo?: string;
   page?: number;
+  signal?: AbortSignal;
 }
 
 class TransactionsWorkspaceService {
-  async getTransactionDetail(id: string): Promise<Transaction> {
-    return api.get<Transaction>(`/transactions/${id}/`);
+  async getTransactionDetail(id: string, signal?: AbortSignal): Promise<Transaction> {
+    return api.get<Transaction>(`/transactions/${id}/`, undefined, { signal });
   }
 
-  async getRoutingHistory(transactionId: string): Promise<RoutingAction[]> {
-    try {
-      const response = await api.get<PaginatedResponse<RoutingAction>>(
-        `/transactions/${transactionId}/routing-history/`
-      );
-      return response.results;
-    } catch (error) {
-      console.error('Failed to load routing history:', error);
-      return [];
-    }
+  async getRoutingHistory(
+    transactionId: string,
+    options: { page?: number; signal?: AbortSignal } = {}
+  ): Promise<PaginatedResponse<RoutingAction>> {
+    return api.get<PaginatedResponse<RoutingAction>>(
+      `/transactions/${transactionId}/routing-history/`,
+      options.page ? { page: options.page } : undefined,
+      { signal: options.signal }
+    );
   }
 
-  async getApprovalHistory(transactionId: string): Promise<ApprovalAction[]> {
-    try {
-      const response = await api.get<PaginatedResponse<ApprovalAction>>(
-        `/transactions/${transactionId}/approval-history/`
-      );
-      return response.results;
-    } catch (error) {
-      console.error('Failed to load approval history:', error);
-      return [];
-    }
+  async getApprovalHistory(
+    transactionId: string,
+    options: { page?: number; signal?: AbortSignal } = {}
+  ): Promise<PaginatedResponse<ApprovalAction>> {
+    return api.get<PaginatedResponse<ApprovalAction>>(
+      `/transactions/${transactionId}/approval-history/`,
+      options.page ? { page: options.page } : undefined,
+      { signal: options.signal }
+    );
   }
 
   async getIncomingRegistry(transactionId: string): Promise<IncomingRegistry | null> {
@@ -115,31 +115,37 @@ class TransactionsWorkspaceService {
     }
   }
 
-  async getAttachments(transactionId: string): Promise<Attachment[]> {
-    try {
-      const response = await api.get<PaginatedResponse<Attachment>>(
-        `/transactions/${transactionId}/attachments/`
-      );
-      return response.results;
-    } catch (error) {
-      console.error('Failed to load attachments:', error);
-      return [];
-    }
+  async getAttachments(
+    transactionId: string,
+    options: { page?: number; signal?: AbortSignal } = {}
+  ): Promise<PaginatedResponse<Attachment>> {
+    return api.get<PaginatedResponse<Attachment>>(
+      `/transactions/${transactionId}/attachments/`,
+      options.page ? { page: options.page } : undefined,
+      { signal: options.signal }
+    );
   }
 
-  async getAuditHistory(transactionId: string): Promise<{ logs: AuditLog[]; accessDenied: boolean }> {
+  async getAuditHistory(
+    transactionId: string,
+    options: { page?: number; signal?: AbortSignal } = {}
+  ): Promise<{ page: PaginatedResponse<AuditLog>; accessDenied: boolean }> {
     try {
       const response = await api.get<PaginatedResponse<AuditLog>>(
-        `/transactions/${transactionId}/audit-history/`
+        `/transactions/${transactionId}/audit-history/`,
+        options.page ? { page: options.page } : undefined,
+        { signal: options.signal }
       );
-      return { logs: response.results, accessDenied: false };
+      return { page: response, accessDenied: false };
     } catch (error: unknown) {
       const apiError = error as { status?: number };
       if (apiError.status === 403) {
-        return { logs: [], accessDenied: true };
+        return {
+          page: { count: 0, next: null, previous: null, results: [] },
+          accessDenied: true,
+        };
       }
-      console.error('Failed to load audit history:', error);
-      return { logs: [], accessDenied: false };
+      throw error;
     }
   }
 
@@ -172,12 +178,18 @@ class TransactionsWorkspaceService {
       outgoingRegistry,
       printDispatch,
       attachments,
-      auditHistory: auditResult.logs,
+      auditHistory: auditResult.page,
       auditAccessDenied: auditResult.accessDenied,
     };
   }
 
   async getTransactions(filters: TransactionListFilters): Promise<PaginatedResponse<Transaction>> {
+    if (filters.pageUrl) {
+      return api.get<PaginatedResponse<Transaction>>(filters.pageUrl, undefined, {
+        signal: filters.signal,
+      });
+    }
+
     const params: Record<string, string> = {};
     
     if (filters.search) params.search = filters.search;
@@ -191,7 +203,9 @@ class TransactionsWorkspaceService {
     if (filters.page) params.page = filters.page.toString();
 
     const endpoint = filters.isArchived ? '/transactions/archive/' : '/transactions/';
-    return api.get<PaginatedResponse<Transaction>>(endpoint, params);
+    return api.get<PaginatedResponse<Transaction>>(endpoint, params, {
+      signal: filters.signal,
+    });
   }
 }
 

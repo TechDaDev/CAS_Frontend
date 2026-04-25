@@ -19,7 +19,7 @@ export function AppShell({ children }: AppShellProps) {
           </div>
           <div className="border-t border-slate-200 p-4">
             <p className="text-xs text-slate-500">
-              College Administrative Workflow System
+              واجهة نظام الأرشفة والمراسلات الإدارية
             </p>
           </div>
         </aside>

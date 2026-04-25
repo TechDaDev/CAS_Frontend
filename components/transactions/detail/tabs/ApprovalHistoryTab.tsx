@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+
 import { ApprovalAction, DecisionType } from '@/types';
 import { transactionsWorkspaceService } from '@/features/transactions/services/workspace';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
+import { PaginationControls } from '@/components/PaginationControls';
+import { useState } from 'react';
 
 interface ApprovalHistoryTabProps {
   transactionId: string;
@@ -15,37 +18,26 @@ const decisionStyles: Record<DecisionType, string> = {
   approved: 'bg-emerald-100 text-emerald-800',
   rejected: 'bg-rose-100 text-rose-800',
   returned: 'bg-amber-100 text-amber-800',
-  delegated: 'bg-blue-100 text-blue-800',
+  endorsed: 'bg-blue-100 text-blue-800',
 };
 
 export function ApprovalHistoryTab({ transactionId }: ApprovalHistoryTabProps) {
-  const [approvals, setApprovals] = useState<ApprovalAction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const approvalsQuery = useQuery({
+    queryKey: ['transaction-approval-history', transactionId, currentPage],
+    placeholderData: keepPreviousData,
+    queryFn: ({ signal }) => transactionsWorkspaceService.getApprovalHistory(transactionId, { page: currentPage, signal }),
+  });
 
-  useEffect(() => {
-    const loadApprovals = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const data = await transactionsWorkspaceService.getApprovalHistory(transactionId);
-        setApprovals(data);
-      } catch (err) {
-        setError('فشل تحميل سجل الموافقات');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadApprovals();
-  }, [transactionId]);
-
-  if (isLoading) {
+  if (approvalsQuery.isLoading && !approvalsQuery.data) {
     return <LoadingState message="جارٍ تحميل الموافقات..." />;
   }
 
-  if (error) {
-    return <ErrorState title="خطأ" message={error} />;
+  if (approvalsQuery.error) {
+    return <ErrorState title="خطأ" message="فشل تحميل سجل الموافقات" />;
   }
+
+  const approvals: ApprovalAction[] = approvalsQuery.data?.results ?? [];
 
   if (approvals.length === 0) {
     return (
@@ -94,6 +86,15 @@ export function ApprovalHistoryTab({ transactionId }: ApprovalHistoryTabProps) {
           </div>
         </div>
       ))}
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalItems={approvalsQuery.data?.count ?? 0}
+        hasNextPage={Boolean(approvalsQuery.data?.next)}
+        hasPreviousPage={Boolean(approvalsQuery.data?.previous)}
+        onPageChange={setCurrentPage}
+        isLoading={approvalsQuery.isFetching}
+      />
     </div>
   );
 }

@@ -10,13 +10,13 @@ interface Tab {
 }
 
 const tabs: Tab[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'routing', label: 'Routing History' },
-  { id: 'approvals', label: 'Approval History' },
-  { id: 'registry', label: 'Registry' },
-  { id: 'print-dispatch', label: 'Print / Dispatch' },
-  { id: 'attachments', label: 'Attachments' },
-  { id: 'audit', label: 'Audit History' },
+  { id: 'overview', label: 'نظرة عامة' },
+  { id: 'routing', label: 'سجل الإحالات' },
+  { id: 'approvals', label: 'سجل الموافقات' },
+  { id: 'registry', label: 'السجل' },
+  { id: 'print-dispatch', label: 'الطباعة والإرسال' },
+  { id: 'attachments', label: 'المرفقات' },
+  { id: 'audit', label: 'سجل التدقيق' },
 ];
 
 interface TransactionDetailTabsProps {

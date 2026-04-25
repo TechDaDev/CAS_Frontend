@@ -19,8 +19,11 @@ export interface CurrentUser {
   is_superuser: boolean;
   institution_id?: string | null;
   institution_name: string | null;
-  user_category?: UserCategory;
+  profile_institution?: string | null;
+  user_category?: UserCategory | null;
   profile_image?: string | null;
+  permissions?: string[];
+  access_summary?: TransactionAccessSummary;
 }
 
 export type UserCategory = 'teaching' | 'staff';
@@ -76,7 +79,40 @@ export interface Institution {
 export type TransactionStatus = 'draft' | 'submitted' | 'in_progress' | 'pending' | 'completed' | 'cancelled' | 'archived';
 export type TransactionPriority = 'low' | 'normal' | 'high' | 'urgent';
 export type TransactionConfidentiality = 'normal' | 'confidential' | 'restricted';
-export type SourceType = 'internal' | 'external';
+export type SourceType = 'external_incoming' | 'external_outgoing' | 'internal' | 'committee' | 'response';
+
+export interface CorrespondenceParty {
+  name: string;
+  reference?: string | null;
+  type?: 'sender' | 'recipient' | 'cc' | 'other';
+}
+
+export interface TransactionWorkflowSnapshot {
+  incoming_registry_number?: string | null;
+  outgoing_registry_number?: string | null;
+  print_dispatch_status?: PrintDispatchStatus | null;
+  attachment_count?: number;
+  last_activity_at?: string | null;
+  current_route_id?: string | null;
+  last_approval_id?: string | null;
+}
+
+export interface TransactionAccessSummary {
+  can_create_transaction?: boolean;
+  can_update_transaction?: boolean;
+  can_route_transaction?: boolean;
+  can_approve_transaction?: boolean;
+  can_register_incoming?: boolean;
+  can_register_outgoing?: boolean;
+  can_prepare_print?: boolean;
+  can_record_wet_signature?: boolean;
+  can_record_dispatch?: boolean;
+  can_upload_attachment?: boolean;
+  can_view_attachment?: boolean;
+  can_manage_institution_users?: boolean;
+  can_view_audit?: boolean;
+  can_view_reports?: boolean;
+}
 
 export interface Transaction {
   id: string;
@@ -96,17 +132,31 @@ export interface Transaction {
   created_by_email: string;
   created_assignment: string | null;
   created_unit: string | null;
+  created_unit_name?: string | null;
   current_assignment: string | null;
   current_unit: string | null;
+  current_unit_name?: string | null;
   requires_response: boolean;
   due_date: string | null;
   is_print_ready: boolean;
   is_archived: boolean;
   external_reference: string | null;
+  external_sender_name?: string | null;
+  external_recipient_name?: string | null;
   notes: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  incoming_registry_number?: string | null;
+  outgoing_registry_number?: string | null;
+  print_dispatch_status?: PrintDispatchStatus | null;
+  attachment_count?: number;
+  last_activity_at?: string | null;
+  current_route_id?: string | null;
+  last_approval_id?: string | null;
+  workflow_snapshot?: TransactionWorkflowSnapshot;
+  access_summary?: TransactionAccessSummary;
+  correspondence_parties?: CorrespondenceParty[];
 }
 
 export interface TransactionType {
@@ -123,8 +173,8 @@ export interface TransactionType {
 }
 
 // Routing
-export type RouteType = 'forward' | 'return' | 'referral';
-export type RoutingStatus = 'sent' | 'received' | 'completed' | 'rejected';
+export type RouteType = 'forward' | 'return' | 'escalate' | 'assign' | 'refer';
+export type RoutingStatus = 'sent' | 'received' | 'completed' | 'cancelled';
 export type TargetMode = 'user' | 'unit' | 'assignment' | 'committee';
 
 export interface RoutingAction {
@@ -154,9 +204,9 @@ export interface RoutingAction {
 }
 
 // Approvals
-export type DecisionType = 'approved' | 'rejected' | 'returned' | 'delegated';
+export type DecisionType = 'approved' | 'rejected' | 'returned' | 'endorsed';
 export type SignatureMethod = 'wet_ink' | 'digital' | 'system_recorded';
-export type SignatureStatus = 'pending' | 'signed' | 'waived';
+export type SignatureStatus = 'pending' | 'signed' | 'failed' | 'waived';
 
 export interface ApprovalAction {
   id: string;
@@ -215,11 +265,11 @@ export interface OutgoingRegistry {
   registered_by_email: string;
   registered_assignment: string;
   registered_unit: string;
-  sent_date: string;
+  registered_date: string;
   recipient_name: string | null;
   external_reference: string | null;
-  dispatch_method: string | null;
-  tracking_number: string | null;
+  subject_snapshot: string | null;
+  notes: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -233,7 +283,8 @@ export type PrintDispatchStatus =
   | 'delivered_for_signature'
   | 'wet_signed'
   | 'delivered_to_registry'
-  | 'dispatched';
+  | 'dispatched'
+  | 'cancelled';
 
 export interface PrintDispatch {
   id: string;
@@ -247,6 +298,7 @@ export interface PrintDispatch {
   printed_at: string | null;
   printed_by: string | null;
   delivered_for_signature_at: string | null;
+  delivered_for_signature_by?: string | null;
   wet_signed_at: string | null;
   wet_signed_by: string | null;
   delivered_to_registry_at: string | null;
@@ -255,6 +307,8 @@ export interface PrintDispatch {
   dispatch_notes: string | null;
   dispatched_at: string | null;
   dispatched_by: string | null;
+  cancelled_at?: string | null;
+  cancelled_by?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -292,17 +346,34 @@ export interface Attachment {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  extraction?: AttachmentExtraction;
+  extraction_status?: AttachmentExtractionStatus;
+  extracted_at?: string | null;
+  extraction_error_message?: string | null;
+  extracted_text?: string | null;
+  extracted_metadata?: Record<string, unknown> | null;
+}
+
+export type AttachmentExtractionStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface AttachmentExtraction {
+  id?: string;
+  status: AttachmentExtractionStatus;
+  extracted_at?: string | null;
+  error_message?: string | null;
+  extracted_text?: string | null;
+  extracted_metadata?: Record<string, unknown> | null;
 }
 
 // Notifications
 export type NotificationCategory = 
   | 'routing_received'
-  | 'routing_returned'
-  | 'approval_required'
-  | 'approved'
-  | 'rejected'
-  | 'registry_incoming'
-  | 'dispatch_stage';
+  | 'routing_completed'
+  | 'approval_recorded'
+  | 'registry_registered'
+  | 'dispatch_updated'
+  | 'attachment_uploaded'
+  | 'general';
 
 export interface Notification {
   id: string;
@@ -559,7 +630,7 @@ export interface CommitteeMember {
   assignment: string;
   member_email: string;
   member_name: string;
-  role: 'chair' | 'vice_chair' | 'secretary' | 'member';
+  role: 'chair' | 'vice_chair' | 'secretary' | 'rapporteur' | 'member';
   joined_at: string;
   is_active: boolean;
 }

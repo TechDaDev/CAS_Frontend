@@ -15,13 +15,14 @@ interface PrintDispatchStageModalProps {
 }
 
 const stageDescriptions: Record<PrintDispatchStatus, string> = {
-  'ready_for_print': 'Document is ready for printing',
-  'prepared': 'Document has been prepared for printing',
-  'printed': 'Document has been printed',
-  'delivered_for_signature': 'Document delivered for signature',
-  'wet_signed': 'Document has been wet signed',
-  'delivered_to_registry': 'Document delivered to registry',
-  'dispatched': 'Document has been dispatched',
+  'ready_for_print': 'المستند جاهز للطباعة',
+  'prepared': 'تم تجهيز المستند للطباعة',
+  'printed': 'تمت طباعة المستند',
+  'delivered_for_signature': 'تم تسليم المستند للتوقيع',
+  'wet_signed': 'تم توقيع المستند توقيعاً أصلياً',
+  'delivered_to_registry': 'تم تسليم المستند إلى السجل',
+  'dispatched': 'تم إرسال المستند',
+  'cancelled': 'تم إلغاء دورة الإرسال',
 };
 
 export function PrintDispatchStageModal({
@@ -64,6 +65,7 @@ export function PrintDispatchStageModal({
         'wet_signed': registryService.markWetSigned,
         'delivered_to_registry': registryService.markDeliveredToRegistry,
         'dispatched': registryService.markDispatched,
+        'cancelled': registryService.markDispatched,
       };
 
       const method = stageMethods[nextStage];
@@ -73,11 +75,11 @@ export function PrintDispatchStageModal({
     } catch (err: unknown) {
       const apiError = err as { status?: number };
       if (apiError.status === 403) {
-        setError('You do not have permission to advance this stage.');
+        setError('لا تملك صلاحية الانتقال إلى هذه المرحلة.');
       } else if (apiError.status === 400) {
-        setError('Invalid stage transition.');
+        setError('الانتقال بين المراحل غير صالح.');
       } else {
-        setError('Failed to advance stage. Please try again.');
+        setError('تعذر تحديث المرحلة. حاول مرة أخرى.');
       }
     } finally {
       setIsSubmitting(false);
@@ -106,43 +108,43 @@ export function PrintDispatchStageModal({
         )}
 
         <div className="mb-4 rounded-md bg-blue-50 p-3 text-sm text-blue-700">
-          <p className="font-medium">Current Stage</p>
+          <p className="font-medium">المرحلة الحالية</p>
           <p>{stageDescriptions[currentStage]}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700">Acted Assignment ID (Optional)</label>
+            <label className="block text-sm font-medium text-slate-700">المكلّف المنفذ</label>
             <input
               type="text"
               value={actedAssignment}
               onChange={(e) => setActedAssignment(e.target.value)}
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Your assignment ID..."
+              placeholder="أدخل معرف التكليف عند الحاجة"
             />
           </div>
 
           {isDispatchStage && (
             <>
               <div>
-                <label className="block text-sm font-medium text-slate-700">Dispatch Reference</label>
+                <label className="block text-sm font-medium text-slate-700">مرجع الإرسال</label>
                 <input
                   type="text"
                   value={dispatchReference}
                   onChange={(e) => setDispatchReference(e.target.value)}
                   className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Reference number..."
+                  placeholder="رقم المرجع"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">Dispatch Notes</label>
+                <label className="block text-sm font-medium text-slate-700">ملاحظات الإرسال</label>
                 <textarea
                   value={dispatchNotes}
                   onChange={(e) => setDispatchNotes(e.target.value)}
                   rows={2}
                   className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Delivery method, courier info, etc..."
+                  placeholder="ملاحظات جهة التسليم أو شركة النقل"
                 />
               </div>
             </>
@@ -154,14 +156,14 @@ export function PrintDispatchStageModal({
               onClick={onClose}
               className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Cancel
+              إلغاء
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Processing...' : nextStageLabel}
+              {isSubmitting ? 'جارٍ المعالجة...' : nextStageLabel}
             </button>
           </div>
         </form>

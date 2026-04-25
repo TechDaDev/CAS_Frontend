@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AuthProvider } from "@/hooks/useAuth";
 import { Cairo } from "next/font/google";
+import { Providers } from "@/app/providers";
+import { env } from "@/lib/env";
 
 const cairo = Cairo({
   subsets: ["arabic"],
@@ -9,7 +10,7 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "نظام إدارة المعاملات الإدارية - منصة OMS",
+  title: `${env.NEXT_PUBLIC_APP_NAME} - منصة OMS`,
   description: "منصة أتمتة سير العمل الإداري للمؤسسات الأكاديمية",
 };
 
@@ -21,9 +22,7 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <body className={`${cairo.variable} antialiased font-sans`}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

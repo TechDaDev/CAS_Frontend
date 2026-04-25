@@ -106,17 +106,21 @@ export function RegistryTab({ transactionId }: RegistryTabProps) {
 
   const incomingFields = [
     { label: 'رقم السجل', key: 'registry_number_display' },
-    { label: 'تاريخ الاستلام', key: 'received_at', formatter: (val: unknown) => val ? new Date(String(val)).toLocaleString('ar-SA') : '-' },
-    { label: 'المستلم', key: 'received_by_name' },
+    { label: 'تاريخ الاستلام', key: 'received_date', formatter: (val: unknown) => val ? new Date(String(val)).toLocaleDateString('ar-SA') : '-' },
+    { label: 'اسم المرسل', key: 'sender_name' },
+    { label: 'المرجع الخارجي', key: 'external_reference' },
+    { label: 'ملخص الموضوع', key: 'subject_snapshot' },
+    { label: 'ملاحظات', key: 'notes' },
     { label: 'تاريخ الإنشاء', key: 'created_at', formatter: (val: unknown) => val ? new Date(String(val)).toLocaleString('ar-SA') : '-' },
   ];
 
   const outgoingFields = [
     { label: 'رقم السجل', key: 'registry_number_display' },
-    { label: 'تاريخ الإرسال', key: 'sent_at', formatter: (val: unknown) => val ? new Date(String(val)).toLocaleString('ar-SA') : '-' },
-    { label: 'المرسل', key: 'sent_by_name' },
-    { label: 'طريقة التسليم', key: 'delivery_method' },
-    { label: 'الجهة المستلمة', key: 'recipient_entity' },
+    { label: 'تاريخ التسجيل', key: 'registered_date', formatter: (val: unknown) => val ? new Date(String(val)).toLocaleDateString('ar-SA') : '-' },
+    { label: 'الجهة المستلمة', key: 'recipient_name' },
+    { label: 'المرجع الخارجي', key: 'external_reference' },
+    { label: 'ملخص الموضوع', key: 'subject_snapshot' },
+    { label: 'ملاحظات', key: 'notes' },
     { label: 'تاريخ الإنشاء', key: 'created_at', formatter: (val: unknown) => val ? new Date(String(val)).toLocaleString('ar-SA') : '-' },
   ];
 

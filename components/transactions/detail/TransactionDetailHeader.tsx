@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Transaction } from '@/types';
+import { usePermissions } from '@/hooks/usePermissions';
 import { StatusBadge } from '@/components/StatusBadge';
 import { RouteTransactionModal } from '@/components/workflow/RouteTransactionModal';
 import { ApprovalActionModal } from '@/components/workflow/ApprovalActionModal';
@@ -15,6 +16,7 @@ interface TransactionDetailHeaderProps {
 }
 
 export function TransactionDetailHeader({ transaction, onWorkspaceUpdate }: TransactionDetailHeaderProps) {
+  const permissions = usePermissions();
   const [isRouteModalOpen, setIsRouteModalOpen] = useState(false);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
@@ -25,10 +27,10 @@ export function TransactionDetailHeader({ transaction, onWorkspaceUpdate }: Tran
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-slate-600 mb-2">
         <Link href="/transactions" className="hover:text-slate-900">
-          Transactions
+          المعاملات
         </Link>
         <span>/</span>
-        <span>Detail</span>
+        <span>التفاصيل</span>
       </div>
 
       {/* Header Content */}
@@ -41,7 +43,7 @@ export function TransactionDetailHeader({ transaction, onWorkspaceUpdate }: Tran
             <StatusBadge status={transaction.priority} variant="priority" />
             {transaction.is_archived && (
               <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                Archived
+                مؤرشفة
               </span>
             )}
           </div>
@@ -49,30 +51,36 @@ export function TransactionDetailHeader({ transaction, onWorkspaceUpdate }: Tran
 
         {/* Action Area - Enabled for Phase D */}
         <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setIsRouteModalOpen(true)}
-            className="rounded-md bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-100"
-          >
-            Route
-          </button>
-          <button
-            onClick={() => setIsApproveModalOpen(true)}
-            className="rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-100"
-          >
-            Approve
-          </button>
-          <button
-            onClick={() => setIsRegisterModalOpen(true)}
-            className="rounded-md bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-100"
-          >
-            Register
-          </button>
-          {!transaction.is_print_ready && (
+          {permissions.canRouteTransaction && (
+            <button
+              onClick={() => setIsRouteModalOpen(true)}
+              className="rounded-md bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-100"
+            >
+              إحالة
+            </button>
+          )}
+          {permissions.canApproveTransaction && (
+            <button
+              onClick={() => setIsApproveModalOpen(true)}
+              className="rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-100"
+            >
+              اعتماد
+            </button>
+          )}
+          {(permissions.canRegisterIncoming || permissions.canRegisterOutgoing) && (
+            <button
+              onClick={() => setIsRegisterModalOpen(true)}
+              className="rounded-md bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-100"
+            >
+              تسجيل
+            </button>
+          )}
+          {permissions.canPreparePrint && !transaction.is_print_ready && (
             <button
               onClick={() => setIsDispatchModalOpen(true)}
               className="rounded-md bg-purple-50 px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-100"
             >
-              Dispatch
+              إنشاء دورة الطباعة
             </button>
           )}
         </div>

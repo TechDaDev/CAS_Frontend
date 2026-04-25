@@ -93,8 +93,46 @@ Response body:
   "is_active": true,
   "is_staff": true,
   "is_superuser": true,
-  "institution_id": null,
-  "institution_name": null
+  "institution_name": null,
+  "profile_image": null
+}
+```
+
+### PATCH /api/auth/me/
+
+- Note: Updates authenticated user profile fields.
+- Note: Supported fields are `first_name`, `last_name`, `user_category`, and `profile_image`.
+
+Request body (json):
+
+```json
+{
+  "first_name": "Dheyaa",
+  "last_name": "Jasim",
+  "user_category": "staff"
+}
+```
+
+Request body (multipart):
+
+- first_name: string (optional)
+- last_name: string (optional)
+- user_category: teaching | staff (optional)
+- profile_image: image file or null (optional)
+
+Response body:
+
+```json
+{
+  "id": "uuid",
+  "email": "admin@oms.local",
+  "first_name": "Dheyaa",
+  "last_name": "Jasim",
+  "is_active": true,
+  "is_staff": true,
+  "is_superuser": true,
+  "institution_name": null,
+  "profile_image": "https://corrarchivsystem.up.railway.app/media/users/<user-id>/profile/<filename>.png"
 }
 ```
 
@@ -201,7 +239,9 @@ Response body:
 - GET /api/institutions/
 - POST /api/institutions/
 - GET /api/institutions/{id}/
+- PUT /api/institutions/{id}/
 - PATCH /api/institutions/{id}/
+- DELETE /api/institutions/{id}/
 - POST /api/institutions/{id}/assign-dean/
 
 ### POST /api/institutions/
@@ -243,15 +283,60 @@ Response body:
 }
 ```
 
+### PUT /api/institutions/{id}/
+
+- Note: Full update for institution details (platform super admin or dean of own institution).
+- Note: Use this to edit institution metadata and activation status.
+
+Request body:
+
+```json
+{
+  "name": "Workflow College Updated",
+  "slug": "workflow-college-updated",
+  "code": "WCOL2",
+  "description": "Updated institution profile",
+  "address": "New Campus Road",
+  "contact_email": "admin-updated@wcol.edu",
+  "contact_phone": "+123456789",
+  "is_active": true
+}
+```
+
 ### PATCH /api/institutions/{id}/
 
+- Note: Partial update for institution fields, including `name`, `slug`, `code`, `description`, `address`, `contact_email`, `contact_phone`, `logo`, and `is_active`.
 - Note: Supports institution logo upload (dean of own institution or platform super admin).
+
+Request body (json example):
+
+```json
+{
+  "name": "Workflow College Renamed",
+  "is_active": false
+}
+```
 
 Request body (multipart):
 
 - logo: image file
+- name: string (optional)
+- slug: string (optional)
+- code: string (optional)
+- description: string (optional)
+- address: string (optional)
+- contact_email: string (optional)
+- contact_phone: string (optional)
+- is_active: boolean (optional)
 
-Response body includes updated `logo` URL.
+Response body includes updated institution fields and `logo` URL.
+
+### DELETE /api/institutions/{id}/
+
+- Note: Soft-deactivates the institution by setting `is_active=false`.
+- Note: The record is preserved and can be reactivated later with `PUT` or `PATCH`.
+
+Response: `204 No Content`
 
 ### POST /api/institutions/{id}/assign-dean/
 
@@ -932,6 +1017,14 @@ Response body:
 ## Common Notes
 
 - Most list endpoints are paginated and return: count, next, previous, results.
+- Custom list-like workflow endpoints now also use the standard DRF pagination envelope:
+- `/api/transactions/my/`
+- `/api/transactions/{id}/routing-history/`
+- `/api/transactions/{id}/approval-history/`
+- `/api/transactions/{id}/attachments/`
+- `/api/transactions/{id}/audit-history/`
+- `/api/routing/inbox/`
+- `/api/routing/outbox/`
 - Search query parameter:
   - transactions: /api/transactions/?search=...
   - incoming registry: /api/registry/incoming/?search=...
@@ -941,6 +1034,10 @@ Response body:
   - /api/transactions/archive/
 - Notifications are in-app only (no email/SMS/push).
 - Audit logs are read-only via API.
+- Attachment download remains permission-checked and should be fronted by protected media delivery in production.
+- Organization subtree visibility is backed by a closure table for fast descendant lookups.
+- Registry numbering is concurrency-safe through a dedicated `RegistrySequence` table.
+- Reports and state-changing endpoints are throttle-scoped; see `README.md` for default rates.
 - Standard error response shape for validation failures:
 
 ```json
@@ -954,3 +1051,129 @@ Response body:
 ```http
 Authorization: Bearer <access-token>
 ```
+
+## Recent Backend Changes (2026-04-25)
+
+The backend received several feature and behavior changes that affect how the frontend should integrate with the API. Key changes:
+
+- Request-level access caching: a `UserAccessContext` is built per request to cache closure-table lookups and permission decisions. This is internal to the backend — no new API to call — but responses and visibility are now consistent and faster.
+- Organization closure table: unit subtree lookups are implemented server-side. Use the `GET /api/organization/units/tree/?institution={institution_id}` endpoint to fetch the authoritative unit tree.
+- Pagination envelope for custom endpoints: several formerly-list-like custom endpoints now return a DRF pagination envelope (`count`, `next`, `previous`, `results`). See the frontend notes below for affected endpoints.
+- Attachment visibility moved to SQL-scoped querysets: do not apply client-side filtering for attachment visibility; rely on the API to return only permitted attachments.
+- Denormalized workflow fields: transactions now include additional denormalized fields (for example: `created_by_email`, `created_unit_name`, `current_unit_name`, `transaction_type_code`, `institution_name`) to reduce round-trips — prefer these fields when available.
+- Transaction workflow snapshot and access cache: new internal models (`TransactionWorkflowSnapshot`, `TransactionAccess`) keep workflow state and access caches in sync; these are backend-only implementation details but may result in faster list/detail responses.
+- Attachment extraction: the backend stores OCR/extraction rows (`AttachmentExtraction`) asynchronously — the attachment object may update with `extracted_text`/`extracted_metadata` after upload.
+- Registry sequencing and concurrency-safety: `RegistrySequence` is used for safe concurrent sequence generation for incoming/outgoing registry entries.
+- Print-dispatch transitions: new endpoints support stage transitions for print/dispatch workflows (see section above for available `print-dispatch` transition endpoints).
+- Notifications idempotency: notification creation supports an `idempotency_key`; duplicate keys return the existing notification row rather than creating duplicates.
+- Scoped throttling: several actions are now throttle-scoped (login/refresh, approval creation, reports, some custom endpoints). Expect `429` responses with a `Retry-After` header when rate-limited.
+
+## Frontend Integration Notes (actionable)
+
+Update the frontend to reflect the backend changes. The checklist below is intended for the frontend engineering team and QA.
+
+- Pagination envelope: update UI logic for these endpoints to read items from `response.results` instead of expecting a top-level array. Affected endpoints:
+  - `/api/transactions/my/`
+  - `/api/transactions/{id}/routing-history/`
+  - `/api/transactions/{id}/approval-history/`
+  - `/api/transactions/{id}/attachments/`
+  - `/api/transactions/{id}/audit-history/`
+  - `/api/routing/inbox/`
+  - `/api/routing/outbox/`
+  - `/api/notifications/` (already paginated)
+
+  Use the `next` URL to implement pagination/infinite-scroll or follow `page` query params when available.
+
+- Attachment uploads: use `multipart/form-data` and include authentication. Example (curl):
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/transactions/attachments/" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -F "institution=<INSTITUTION_UUID>" \
+  -F "transaction=<TRANSACTION_UUID>" \
+  -F "file=@/path/to/file.pdf" \
+  -F "uploaded_assignment=<ASSIGNMENT_UUID>"
+```
+
+- Attachment download: call `GET /api/transactions/attachments/{id}/download/` with the `Authorization: Bearer <token>` header. The response is streamed; handle `403`/`404` and save the `Content-Disposition` filename if present.
+
+- Use denormalized fields: prefer `created_by_email`, `created_unit_name`, `current_unit_name`, and `transaction_type_code` when rendering lists/details to avoid extra API calls for small lookups.
+
+- Organization tree: build the unit tree from `GET /api/organization/units/tree/?institution={institution_id}`. Do not attempt to reconstruct the authoritative subtree by repeatedly calling `GET /api/organization/units/` — the tree endpoint is optimized for this use.
+
+- Notifications: when creating notifications or other retriable side-effectful actions, send an `idempotency_key` (UUIDv4) so retries do not create duplicates; if the backend returns the existing row, treat it as success.
+
+- Print-dispatch transitions: call the specific stage endpoints, for example `POST /api/registry/print-dispatch/{id}/mark-dispatched/` with body:
+
+```json
+{
+  "acted_assignment": "<ASSIGNMENT_UUID>",
+  "dispatch_reference": "DSP-2026-001",
+  "dispatch_notes": "Released to external courier"
+}
+```
+
+- Throttling and retry behavior: implement user-friendly handling for `429 Too Many Requests`. Where present, honor the `Retry-After` header and use exponential backoff for automatic retries. For interactive actions (e.g., form submit), show a clear message and disable repeated submissions while waiting.
+
+- Search and filters: continue to use `?search=` for supported endpoints. If adding client-side filters, do not filter by visibility on attachments or transactions — rely on the backend-scoped queries.
+
+- Id/assignment/unit relationships: many write endpoints require `assignment` and/or `unit` UUIDs. Use the current user's assignments (from `GET /api/auth/me/` and `/api/accounts/institution-users/` flows) to populate assignment/unit selectors in forms.
+
+- Test updates / acceptance criteria:
+  - Update frontend unit/integration tests to expect paginated envelopes for the endpoints listed above.
+  - Add tests for attachment upload/download that include the `Authorization` header.
+  - Verify the org-tree renders correctly by calling the tree endpoint in QA fixtures.
+
+## Examples (fetch API)
+
+Fetch paginated list and load next page:
+
+```js
+async function fetchPage(url, token) {
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const body = await res.json();
+  // items are in body.results
+  return { items: body.results, next: body.next };
+}
+```
+
+Upload attachment (browser, FormData):
+
+```js
+const fd = new FormData();
+fd.append('institution', institutionId);
+fd.append('transaction', transactionId);
+fd.append('file', fileInput.files[0]);
+fd.append('uploaded_assignment', assignmentId);
+
+fetch('/api/transactions/attachments/', {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${token}` },
+  body: fd,
+}).then(r => r.json()).then(data => console.log(data));
+```
+
+Download attachment (browser):
+
+```js
+fetch(`/api/transactions/attachments/${attachmentId}/download/`, {
+  headers: { Authorization: `Bearer ${token}` },
+})
+  .then(r => r.blob())
+  .then(blob => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'attachment.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+```
+
+---
+
+If you want, I can also:
+- Open a small PR that highlights the frontend code spots to change (component names and example diffs).
+- Produce a short QA checklist the frontend team can use to verify behavior on staging.
+

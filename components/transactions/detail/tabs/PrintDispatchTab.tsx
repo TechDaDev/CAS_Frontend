@@ -143,6 +143,7 @@ export function PrintDispatchTab({ transactionId, institutionId }: PrintDispatch
     'wet_signed': { next: 'delivered_to_registry', label: 'تحديد كموصل للسجل' },
     'delivered_to_registry': { next: 'dispatched', label: 'تحديد كمرسل' },
     'dispatched': null,
+    'cancelled': null,
   };
 
   const nextTransition = stageTransitions[printDispatch.status];

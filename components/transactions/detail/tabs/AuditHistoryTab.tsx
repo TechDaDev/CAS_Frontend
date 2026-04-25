@@ -1,66 +1,43 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+
 import { AuditLog } from '@/types';
 import { transactionsWorkspaceService } from '@/features/transactions/services/workspace';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
+import { PaginationControls } from '@/components/PaginationControls';
+import { RestrictedState } from '@/components/common/RestrictedState';
 
 interface AuditHistoryTabProps {
   transactionId: string;
 }
 
 export function AuditHistoryTab({ transactionId }: AuditHistoryTabProps) {
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [accessDenied, setAccessDenied] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const auditQuery = useQuery({
+    queryKey: ['transaction-audit-history', transactionId, currentPage],
+    placeholderData: keepPreviousData,
+    queryFn: ({ signal }) => transactionsWorkspaceService.getAuditHistory(transactionId, { page: currentPage, signal }),
+  });
 
-  useEffect(() => {
-    const loadAudit = async () => {
-      setIsLoading(true);
-      setError(null);
-      setAccessDenied(false);
-      
-      try {
-        const result = await transactionsWorkspaceService.getAuditHistory(transactionId);
-        setAuditLogs(result.logs);
-        setAccessDenied(result.accessDenied);
-      } catch (err) {
-        setError('فشل تحميل سجل التدقيق');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadAudit();
-  }, [transactionId]);
+  const accessDenied = auditQuery.data?.accessDenied ?? false;
 
   if (accessDenied) {
-    return (
-      <div className="rounded-lg border border-slate-200 bg-white p-8">
-        <div className="flex flex-col items-center justify-center text-center">
-          <div className="rounded-full bg-amber-50 p-3">
-            <svg className="h-6 w-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h3 className="mt-4 text-sm font-medium text-slate-900">وصول مقيد</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            ليس لديك صلاحية لعرض سجل التدقيق لهذه المعاملة.
-          </p>
-        </div>
-      </div>
-    );
+    return <RestrictedState message="ليس لديك صلاحية لعرض سجل التدقيق لهذه المعاملة." />;
   }
 
-  if (isLoading) {
+  if (auditQuery.isLoading && !auditQuery.data) {
     return <LoadingState message="جارٍ تحميل سجل التدقيق..." />;
   }
 
-  if (error) {
-    return <ErrorState title="خطأ" message={error} />;
+  if (auditQuery.error) {
+    return <ErrorState title="خطأ" message="فشل تحميل سجل التدقيق" />;
   }
+
+  const auditLogs: AuditLog[] = auditQuery.data?.page.results ?? [];
 
   if (auditLogs.length === 0) {
     return (
@@ -142,6 +119,15 @@ export function AuditHistoryTab({ transactionId }: AuditHistoryTabProps) {
           </table>
         </div>
       </div>
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalItems={auditQuery.data?.page.count ?? 0}
+        hasNextPage={Boolean(auditQuery.data?.page.next)}
+        hasPreviousPage={Boolean(auditQuery.data?.page.previous)}
+        onPageChange={setCurrentPage}
+        isLoading={auditQuery.isFetching}
+      />
     </div>
   );
 }

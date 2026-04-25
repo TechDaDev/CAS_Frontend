@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { authService, ApiError } from '@/services/api';
+import { Suspense, useState, FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function LoginPage() {
+import { useAuth } from '@/hooks/useAuth';
+import { ApiError } from '@/services/api';
+
+function LoginPageContent() {
   const router = useRouter();
-  const { login, user } = useAuth();
+  const searchParams = useSearchParams();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -19,16 +21,10 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await login(email, password);
-      const userData = await authService.getCurrentUser();
-      
-      // Use window.location for a full page navigation to ensure
-      // the protected layout properly re-initializes with the new auth state
-      if (userData.is_superuser) {
-        window.location.href = '/platform';
-      } else {
-        window.location.href = '/dashboard';
-      }
+      const userData = await login(email, password);
+      const redirect = searchParams.get('redirect');
+      const destination = redirect || (userData.is_superuser ? '/platform' : '/dashboard');
+      router.replace(destination);
     } catch (err) {
       if (err instanceof ApiError) {
         const errorData = err.data as { detail?: string } | undefined;
@@ -122,5 +118,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-slate-500">جارٍ تحميل صفحة الدخول...</div>}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

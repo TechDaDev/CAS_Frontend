@@ -24,7 +24,7 @@ export default function ProtectedLayout({
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <LoadingState message="Loading session..." />
+        <LoadingState message="جارٍ تحميل الجلسة..." />
       </div>
     );
   }
@@ -32,7 +32,7 @@ export default function ProtectedLayout({
   if (!isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <LoadingState message="Redirecting to login..." />
+        <LoadingState message="جارٍ تحويلك إلى تسجيل الدخول..." />
       </div>
     );
   }

@@ -1,12 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+
 import { Attachment } from '@/types';
 import { transactionsWorkspaceService } from '@/features/transactions/services/workspace';
 import { AttachmentUploadPanel } from '@/components/workflow/AttachmentUploadPanel';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
+import { PaginationControls } from '@/components/PaginationControls';
+import { attachmentsService } from '@/services/attachments';
+import { RestrictedState } from '@/components/common/RestrictedState';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface AttachmentsTabProps {
   transactionId: string;
@@ -46,34 +52,85 @@ const getFileIcon = (mimeType: string) => {
 };
 
 export function AttachmentsTab({ transactionId, institutionId, currentAssignmentId, currentUnitId }: AttachmentsTabProps) {
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const permissions = usePermissions();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const attachmentsQuery = useQuery({
+    queryKey: ['transaction-attachments', transactionId, currentPage],
+    placeholderData: keepPreviousData,
+    queryFn: ({ signal }) => transactionsWorkspaceService.getAttachments(transactionId, { page: currentPage, signal }),
+  });
 
-  const loadAttachments = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await transactionsWorkspaceService.getAttachments(transactionId);
-      setAttachments(data);
-    } catch (err) {
-      setError('فشل تحميل المرفقات');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [transactionId]);
+  const downloadMutation = useMutation({
+    mutationFn: async (attachment: Attachment) => {
+      const response = await attachmentsService.downloadAttachment(attachment.id);
+      const url = window.URL.createObjectURL(response.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = response.filename || attachment.original_filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    },
+    onError: (error: unknown) => {
+      const status = typeof error === 'object' && error && 'status' in error ? Number((error as { status?: number }).status) : 0;
+      if (status === 403) {
+        setDownloadError('لا تملك صلاحية تنزيل هذا المرفق.');
+        return;
+      }
+      if (status === 404) {
+        setDownloadError('الملف المطلوب غير موجود على الخادم.');
+        return;
+      }
+      if (status === 429) {
+        setDownloadError('تم تجاوز الحد المسموح للتنزيل مؤقتاً. حاول لاحقاً.');
+        return;
+      }
+      setDownloadError('تعذر تنزيل المرفق. حاول مرة أخرى.');
+    },
+  });
 
-  useEffect(() => {
-    loadAttachments();
-  }, [loadAttachments]);
-
-  if (isLoading) {
+  if (attachmentsQuery.isLoading && !attachmentsQuery.data) {
     return <LoadingState message="جارٍ تحميل المرفقات..." />;
   }
 
-  if (error) {
-    return <ErrorState title="خطأ" message={error} />;
+  if (attachmentsQuery.error) {
+    return <ErrorState title="خطأ" message="فشل تحميل المرفقات" />;
   }
+
+  const attachments = attachmentsQuery.data?.results ?? [];
+
+  if (!permissions.canViewAttachment) {
+    return <RestrictedState message="لا تملك صلاحية عرض المرفقات لهذه المعاملة." />;
+  }
+
+  const getExtractionBadge = (attachment: Attachment) => {
+    const status = attachment.extraction?.status ?? attachment.extraction_status;
+    if (!status) {
+      return null;
+    }
+
+    const styles: Record<string, string> = {
+      pending: 'bg-amber-50 text-amber-700',
+      processing: 'bg-blue-50 text-blue-700',
+      completed: 'bg-emerald-50 text-emerald-700',
+      failed: 'bg-rose-50 text-rose-700',
+    };
+
+    const labels: Record<string, string> = {
+      pending: 'بانتظار الاستخراج',
+      processing: 'قيد الاستخراج',
+      completed: 'اكتمل الاستخراج',
+      failed: 'فشل الاستخراج',
+    };
+
+    return (
+      <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${styles[status]}`}>
+        {labels[status]}
+      </span>
+    );
+  };
 
   if (attachments.length === 0) {
     return (
@@ -82,19 +139,25 @@ export function AttachmentsTab({ transactionId, institutionId, currentAssignment
           title="لا توجد مرفقات" 
           message="لا توجد مرفقات لهذه المعاملة بعد."
         />
-        <AttachmentUploadPanel
-          transactionId={transactionId}
-          institutionId={institutionId}
-          currentAssignmentId={currentAssignmentId}
-          currentUnitId={currentUnitId}
-          onSuccess={loadAttachments}
-        />
+        {permissions.canUploadAttachment && (
+          <AttachmentUploadPanel
+            transactionId={transactionId}
+            institutionId={institutionId}
+            currentAssignmentId={currentAssignmentId}
+            currentUnitId={currentUnitId}
+            onSuccess={() => attachmentsQuery.refetch()}
+          />
+        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {downloadError && (
+        <div className="rounded-md bg-rose-50 p-3 text-sm text-rose-700">{downloadError}</div>
+      )}
+
       {/* Attachments Table */}
       <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
         <div className="overflow-x-auto">
@@ -137,6 +200,15 @@ export function AttachmentsTab({ transactionId, institutionId, currentAssignment
                         {attachment.description && (
                           <p className="text-xs text-slate-500">{attachment.description}</p>
                         )}
+                        {getExtractionBadge(attachment)}
+                        {attachment.extraction?.status === 'failed' && attachment.extraction?.error_message && (
+                          <p className="mt-1 text-xs text-rose-600">{attachment.extraction.error_message}</p>
+                        )}
+                        {(attachment.extraction?.status === 'completed' || attachment.extraction_status === 'completed') && (attachment.extraction?.extracted_at || attachment.extracted_at) && (
+                          <p className="mt-1 text-xs text-slate-500">
+                            تم الاستخراج في {new Date(attachment.extraction?.extracted_at || attachment.extracted_at || '').toLocaleString('ar-SA')}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -156,13 +228,17 @@ export function AttachmentsTab({ transactionId, institutionId, currentAssignment
                     {attachment.mime_type}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                    <a
-                      href={attachment.file}
-                      download
-                      className="text-blue-600 hover:text-blue-900"
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDownloadError(null);
+                        downloadMutation.mutate(attachment);
+                      }}
+                      className="text-blue-600 hover:text-blue-900 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={downloadMutation.isPending}
                     >
-                      تحميل
-                    </a>
+                      {downloadMutation.isPending ? 'جارٍ التنزيل...' : 'تنزيل محمي'}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -172,13 +248,24 @@ export function AttachmentsTab({ transactionId, institutionId, currentAssignment
       </div>
 
       {/* Upload Panel */}
-      <AttachmentUploadPanel
-        transactionId={transactionId}
-        institutionId={institutionId}
-        currentAssignmentId={currentAssignmentId}
-        currentUnitId={currentUnitId}
-        onSuccess={loadAttachments}
+      <PaginationControls
+        currentPage={currentPage}
+        totalItems={attachmentsQuery.data?.count ?? 0}
+        hasNextPage={Boolean(attachmentsQuery.data?.next)}
+        hasPreviousPage={Boolean(attachmentsQuery.data?.previous)}
+        onPageChange={setCurrentPage}
+        isLoading={attachmentsQuery.isFetching}
       />
+
+      {permissions.canUploadAttachment && (
+        <AttachmentUploadPanel
+          transactionId={transactionId}
+          institutionId={institutionId}
+          currentAssignmentId={currentAssignmentId}
+          currentUnitId={currentUnitId}
+          onSuccess={() => attachmentsQuery.refetch()}
+        />
+      )}
     </div>
   );
 }

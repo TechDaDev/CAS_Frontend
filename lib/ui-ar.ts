@@ -119,7 +119,7 @@ export const decisionLabels: Record<string, string> = {
   approved: 'موافق عليها',
   rejected: 'مرفوضة',
   returned: 'معادة',
-  delegated: 'مفوضة',
+  endorsed: 'مؤيدة',
 };
 
 // Signature method labels
@@ -140,7 +140,9 @@ export const signatureStatusLabels: Record<string, string> = {
 export const routeTypeLabels: Record<string, string> = {
   forward: 'إحالة',
   return: 'إرجاع',
-  referral: 'إحالة اختصاص',
+  escalate: 'تصعيد',
+  assign: 'إسناد',
+  refer: 'إحالة اختصاص',
 };
 
 // Target mode labels
@@ -156,7 +158,7 @@ export const routingStatusLabels: Record<string, string> = {
   sent: 'مرسلة',
   received: 'مستلمة',
   completed: 'مكتملة',
-  rejected: 'مرفوضة',
+  cancelled: 'ملغاة',
 };
 
 // Print/Dispatch status labels
@@ -168,17 +170,18 @@ export const printDispatchStatusLabels: Record<string, string> = {
   wet_signed: 'موقّع بالأصل',
   delivered_to_registry: 'تم التسليم للسجل',
   dispatched: 'تم الإرسال',
+  cancelled: 'تم الإلغاء',
 };
 
 // Notification category labels
 export const notificationCategoryLabels: Record<string, string> = {
   routing_received: 'إحالة مستلمة',
-  routing_returned: 'إحالة معادة',
-  approval_required: 'تتطلب موافقة',
-  approved: 'تمت الموافقة',
-  rejected: 'تم الرفض',
-  registry_incoming: 'وارد السجل',
-  dispatch_stage: 'مرحلة الإرسال',
+  routing_completed: 'إحالة مكتملة',
+  approval_recorded: 'تم تسجيل الموافقة',
+  registry_registered: 'تم التسجيل في السجل',
+  dispatch_updated: 'تحديث الإرسال',
+  attachment_uploaded: 'تم رفع مرفق',
+  general: 'عام',
 };
 
 // Registry type labels
@@ -192,6 +195,7 @@ export const committeeRoleLabels: Record<string, string> = {
   chair: 'رئيس',
   vice_chair: 'نائب الرئيس',
   secretary: 'سكرتير',
+  rapporteur: 'مقرر',
   member: 'عضو',
 };
 

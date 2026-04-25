@@ -1,13 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useQueries } from '@tanstack/react-query';
+
 import { PageHeader } from '@/components/PageHeader';
 import { SummaryCard } from '@/components/SummaryCard';
-import { LoadingState } from '@/components/LoadingState';
-import { ErrorState } from '@/components/ErrorState';
 import { StatusBadge } from '@/components/StatusBadge';
 import { reportsService, notificationsService, transactionsService } from '@/services/data';
-import { uiLabels, notificationCategoryLabels } from '@/lib/ui-ar';
 import { 
   TransactionSummaryReport, 
   RegistrySummaryReport, 
@@ -17,88 +15,63 @@ import {
   Transaction,
 } from '@/types';
 import Link from 'next/link';
+import { usePermissions } from '@/hooks/usePermissions';
+
+function DashboardSectionState({ message, isError = false }: { message: string; isError?: boolean }) {
+  return (
+    <div className={`rounded-lg border px-4 py-6 text-sm ${isError ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-white text-slate-500'}`}>
+      {message}
+    </div>
+  );
+}
+
+function DashboardSkeletonGrid({ count }: { count: number }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: count }).map((_, index) => (
+        <div key={index} className="h-28 animate-pulse rounded-xl border border-slate-200 bg-white" />
+      ))}
+    </div>
+  );
+}
 
 export default function DashboardPage() {
-  const [transactionSummary, setTransactionSummary] = useState<TransactionSummaryReport | null>(null);
-  const [registrySummary, setRegistrySummary] = useState<RegistrySummaryReport | null>(null);
-  const [workflowSummary, setWorkflowSummary] = useState<WorkflowSummaryReport | null>(null);
-  const [mySummary, setMySummary] = useState<MySummaryReport | null>(null);
-  const [recentNotifications, setRecentNotifications] = useState<Notification[]>([]);
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
-  
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { canCreateTransaction } = usePermissions();
+  const [transactionSummaryQuery, registrySummaryQuery, workflowSummaryQuery, mySummaryQuery, notificationsQuery, transactionsQuery] = useQueries({
+    queries: [
+      { queryKey: ['dashboard', 'transaction-summary'], queryFn: () => reportsService.getTransactionSummary(), staleTime: 60_000 },
+      { queryKey: ['dashboard', 'registry-summary'], queryFn: () => reportsService.getRegistrySummary(), staleTime: 60_000 },
+      { queryKey: ['dashboard', 'workflow-summary'], queryFn: () => reportsService.getWorkflowSummary(), staleTime: 60_000 },
+      { queryKey: ['dashboard', 'my-summary'], queryFn: () => reportsService.getMySummary(), staleTime: 120_000 },
+      { queryKey: ['dashboard', 'notifications'], queryFn: () => notificationsService.getNotifications({ is_read: false }), staleTime: 30_000 },
+      { queryKey: ['dashboard', 'transactions'], queryFn: () => transactionsService.getTransactions({ page: 1 }), staleTime: 30_000 },
+    ],
+  });
 
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const [
-          txSummary,
-          regSummary,
-          wfSummary,
-          mySum,
-          notifications,
-          transactions,
-        ] = await Promise.all([
-          reportsService.getTransactionSummary(),
-          reportsService.getRegistrySummary(),
-          reportsService.getWorkflowSummary(),
-          reportsService.getMySummary(),
-          notificationsService.getNotifications({ is_read: false }),
-          transactionsService.getTransactions({ page: 1 }),
-        ]);
-
-        setTransactionSummary(txSummary);
-        setRegistrySummary(regSummary);
-        setWorkflowSummary(wfSummary);
-        setMySummary(mySum);
-        setRecentNotifications(notifications.results.slice(0, 5));
-        setRecentTransactions(transactions.results.slice(0, 5));
-      } catch (err) {
-        setError('فشل تحميل بيانات لوحة التحكم');
-        console.error('Dashboard load error:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadDashboardData();
-  }, []);
-
-  if (isLoading) {
-    return <LoadingState message="جارٍ تحميل لوحة التحكم..." />;
-  }
-
-  if (error) {
-    return (
-      <ErrorState
-        title="فشل تحميل لوحة التحكم"
-        message={error}
-        onRetry={() => window.location.reload()}
-      />
-    );
-  }
+  const transactionSummary = transactionSummaryQuery.data as TransactionSummaryReport | undefined;
+  const registrySummary = registrySummaryQuery.data as RegistrySummaryReport | undefined;
+  const workflowSummary = workflowSummaryQuery.data as WorkflowSummaryReport | undefined;
+  const mySummary = mySummaryQuery.data as MySummaryReport | undefined;
+  const recentNotifications = (notificationsQuery.data?.results.slice(0, 5) ?? []) as Notification[];
+  const recentTransactions = (transactionsQuery.data?.results.slice(0, 5) ?? []) as Transaction[];
 
   return (
     <div>
       <PageHeader
         title="لوحة التحكم"
         subtitle="نظرة عامة على سير العمل والنشاط"
-        action={
+        action={canCreateTransaction ? (
           <Link
             href="/transactions/new"
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             معاملة جديدة
           </Link>
-        }
+        ) : undefined}
       />
 
       {/* My Summary Section */}
-      {mySummary && (
+      {mySummaryQuery.isLoading && !mySummary ? <DashboardSkeletonGrid count={4} /> : mySummary ? (
         <div className="mb-8">
           <h2 className="mb-4 text-lg font-semibold text-slate-900">نشاطي</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -128,10 +101,10 @@ export default function DashboardPage() {
             />
           </div>
         </div>
-      )}
+      ) : mySummaryQuery.error ? <DashboardSectionState isError message="تعذر تحميل ملخص نشاطي." /> : null}
 
       {/* Transaction Summary Section */}
-      {transactionSummary && (
+      {transactionSummaryQuery.isLoading && !transactionSummary ? <DashboardSkeletonGrid count={6} /> : transactionSummary ? (
         <div className="mb-8">
           <h2 className="mb-4 text-lg font-semibold text-slate-900">نظرة عامة على المعاملات</h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -166,10 +139,10 @@ export default function DashboardPage() {
             />
           </div>
         </div>
-      )}
+      ) : transactionSummaryQuery.error ? <DashboardSectionState isError message="تعذر تحميل ملخص المعاملات." /> : null}
 
       {/* Registry Summary Section */}
-      {registrySummary && (
+      {registrySummaryQuery.isLoading && !registrySummary ? <DashboardSkeletonGrid count={4} /> : registrySummary ? (
         <div className="mb-8">
           <h2 className="mb-4 text-lg font-semibold text-slate-900">نشاط السجل ({registrySummary.counts.year})</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -195,10 +168,10 @@ export default function DashboardPage() {
             />
           </div>
         </div>
-      )}
+      ) : registrySummaryQuery.error ? <DashboardSectionState isError message="تعذر تحميل ملخص السجل." /> : null}
 
       {/* Workflow Summary Section */}
-      {workflowSummary && (
+      {workflowSummaryQuery.isLoading && !workflowSummary ? <DashboardSkeletonGrid count={4} /> : workflowSummary ? (
         <div className="mb-8">
           <h2 className="mb-4 text-lg font-semibold text-slate-900">حالة سير العمل</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -224,7 +197,7 @@ export default function DashboardPage() {
             />
           </div>
         </div>
-      )}
+      ) : workflowSummaryQuery.error ? <DashboardSectionState isError message="تعذر تحميل ملخص سير العمل." /> : null}
 
       {/* Recent Activity Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -237,7 +210,9 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="divide-y divide-slate-200">
-            {recentNotifications.length === 0 ? (
+            {notificationsQuery.isLoading && !notificationsQuery.data ? (
+              <div className="px-4 py-6 text-center text-sm text-slate-500">جارٍ تحميل الإشعارات...</div>
+            ) : recentNotifications.length === 0 ? (
               <div className="px-4 py-6 text-center text-sm text-slate-500">
                 لا توجد إشعارات غير مقروءة
               </div>
@@ -269,7 +244,9 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="divide-y divide-slate-200">
-            {recentTransactions.length === 0 ? (
+            {transactionsQuery.isLoading && !transactionsQuery.data ? (
+              <div className="px-4 py-6 text-center text-sm text-slate-500">جارٍ تحميل المعاملات...</div>
+            ) : recentTransactions.length === 0 ? (
               <div className="px-4 py-6 text-center text-sm text-slate-500">
                 لا توجد معاملات
               </div>

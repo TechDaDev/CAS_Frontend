@@ -1,19 +1,19 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { uiLabels } from '@/lib/ui-ar';
-import { useEffect, useState } from 'react';
-import { institutionsService } from '@/services/institutions';
-import { Institution } from '@/types';
 import { FallbackImage } from '@/components/common/FallbackImage';
+import { PermissionAction } from '@/hooks/useAuth';
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
   requiresSuperuser?: boolean;
+  permission?: PermissionAction;
 }
 
 const institutionNavItems: NavItem[] = [
@@ -29,6 +29,7 @@ const institutionNavItems: NavItem[] = [
   {
     label: uiLabels.transactions,
     href: '/transactions',
+    permission: 'view_attachment',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -38,6 +39,7 @@ const institutionNavItems: NavItem[] = [
   {
     label: uiLabels.routing,
     href: '/routing',
+    permission: 'route_transaction',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -47,6 +49,7 @@ const institutionNavItems: NavItem[] = [
   {
     label: uiLabels.approvals,
     href: '/approvals',
+    permission: 'approve_transaction',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -56,6 +59,7 @@ const institutionNavItems: NavItem[] = [
   {
     label: uiLabels.registry,
     href: '/registry',
+    permission: 'register_incoming',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -65,6 +69,7 @@ const institutionNavItems: NavItem[] = [
   {
     label: uiLabels.printDispatch,
     href: '/print-dispatch',
+    permission: 'prepare_print',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -83,6 +88,7 @@ const institutionNavItems: NavItem[] = [
   {
     label: uiLabels.organization,
     href: '/organization',
+    permission: 'view_reports',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -92,6 +98,7 @@ const institutionNavItems: NavItem[] = [
   {
     label: 'مستخدمو المؤسسة',
     href: '/institution-users',
+    permission: 'manage_institution_users',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -110,6 +117,7 @@ const institutionNavItems: NavItem[] = [
   {
     label: uiLabels.audit,
     href: '/audit',
+    permission: 'view_audit',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -119,6 +127,7 @@ const institutionNavItems: NavItem[] = [
   {
     label: uiLabels.reports,
     href: '/reports',
+    permission: 'view_reports',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -160,27 +169,11 @@ const platformNavItems: NavItem[] = [
 ];
 
 export function SidebarNav() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  const permissions = usePermissions();
   const pathname = usePathname();
   const isPlatformRoute = pathname?.startsWith('/platform');
   const isSuperuser = user?.is_superuser;
-  const [institution, setInstitution] = useState<Institution | null>(null);
-
-  // Load institution data for logo display
-  useEffect(() => {
-    const loadInstitution = async () => {
-      if (user?.institution_id && !isPlatformRoute) {
-        try {
-          const data = await institutionsService.getInstitution(user.institution_id);
-          setInstitution(data);
-        } catch (err) {
-          console.error('Failed to load institution:', err);
-        }
-      }
-    };
-
-    loadInstitution();
-  }, [user?.institution_id, isPlatformRoute]);
 
   // Determine which navigation items to show
   let navItemsToShow: NavItem[] = [];
@@ -215,8 +208,29 @@ export function SidebarNav() {
     if (item.requiresSuperuser && !user?.is_superuser) {
       return false;
     }
+    if (item.permission && !permissions.can(item.permission)) {
+      return false;
+    }
     return true;
   });
+
+  const isLinkActive = (href: string) => {
+    if (!pathname) {
+      return false;
+    }
+
+    return href === '/dashboard' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3 px-3 py-4">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div key={index} className="h-10 animate-pulse rounded-md bg-slate-100" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -226,19 +240,19 @@ export function SidebarNav() {
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden">
               <FallbackImage
-                src={institution?.logo}
-                alt={institution?.name || user?.institution_name || 'Institution logo'}
+                src={user?.profile_image ?? null}
+                alt={user?.institution_name || 'Institution logo'}
                 className="h-full w-full object-cover"
                 fallback={
                   <span className="text-lg font-bold text-slate-400">
-                    {institution?.name?.[0] || user?.institution_name?.[0] || 'C'}
+                    {user?.institution_name?.[0] || 'C'}
                   </span>
                 }
               />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-900 truncate">
-                {institution?.name || user?.institution_name || 'الكلية'}
+                {user?.institution_name || 'الكلية'}
               </p>
               <p className="text-xs text-slate-500">{user?.is_superuser ? 'مدير المنصة' : 'موظف'}</p>
             </div>
@@ -248,7 +262,7 @@ export function SidebarNav() {
       
       <nav className="flex-1 space-y-1 px-3 py-4">
         {filteredNavItems.map((item) => {
-          const isActive = pathname?.startsWith(item.href);
+          const isActive = isLinkActive(item.href);
           return (
             <Link
               key={item.href}

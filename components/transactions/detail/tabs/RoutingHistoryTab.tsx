@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+
 import { RoutingAction } from '@/types';
 import { transactionsWorkspaceService } from '@/features/transactions/services/workspace';
 import { routingService } from '@/services/routing';
@@ -8,41 +10,29 @@ import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
 import { StatusBadge } from '@/components/StatusBadge';
+import { PaginationControls } from '@/components/PaginationControls';
 
 interface RoutingHistoryTabProps {
   transactionId: string;
 }
 
 export function RoutingHistoryTab({ transactionId }: RoutingHistoryTabProps) {
-  const [routingHistory, setRoutingHistory] = useState<RoutingAction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [processingActionId, setProcessingActionId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const loadRouting = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await transactionsWorkspaceService.getRoutingHistory(transactionId);
-      setRoutingHistory(data);
-    } catch (err) {
-      setError('فشل تحميل سجل الإحالات');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [transactionId]);
-
-  useEffect(() => {
-    loadRouting();
-  }, [loadRouting]);
+  const routingQuery = useQuery({
+    queryKey: ['transaction-routing-history', transactionId, currentPage],
+    placeholderData: keepPreviousData,
+    queryFn: ({ signal }) => transactionsWorkspaceService.getRoutingHistory(transactionId, { page: currentPage, signal }),
+  });
 
   const handleMarkReceived = async (actionId: string) => {
     setProcessingActionId(actionId);
     setActionError(null);
     try {
       await routingService.markReceived(actionId);
-      await loadRouting();
+      await routingQuery.refetch();
     } catch (err: unknown) {
       const apiError = err as { status?: number };
       if (apiError.status === 403) {
@@ -60,7 +50,7 @@ export function RoutingHistoryTab({ transactionId }: RoutingHistoryTabProps) {
     setActionError(null);
     try {
       await routingService.markCompleted(actionId);
-      await loadRouting();
+      await routingQuery.refetch();
     } catch (err: unknown) {
       const apiError = err as { status?: number };
       if (apiError.status === 403) {
@@ -73,13 +63,15 @@ export function RoutingHistoryTab({ transactionId }: RoutingHistoryTabProps) {
     }
   };
 
-  if (isLoading) {
+  if (routingQuery.isLoading && !routingQuery.data) {
     return <LoadingState message="جارٍ تحميل سجل الإحالات..." />;
   }
 
-  if (error) {
-    return <ErrorState title="خطأ" message={error} />;
+  if (routingQuery.error) {
+    return <ErrorState title="خطأ" message="فشل تحميل سجل الإحالات" />;
   }
+
+  const routingHistory: RoutingAction[] = routingQuery.data?.results ?? [];
 
   if (routingHistory.length === 0) {
     return (
@@ -178,6 +170,15 @@ export function RoutingHistoryTab({ transactionId }: RoutingHistoryTabProps) {
           ))}
         </ul>
       </div>
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalItems={routingQuery.data?.count ?? 0}
+        hasNextPage={Boolean(routingQuery.data?.next)}
+        hasPreviousPage={Boolean(routingQuery.data?.previous)}
+        onPageChange={setCurrentPage}
+        isLoading={routingQuery.isFetching}
+      />
     </div>
   );
 }

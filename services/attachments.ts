@@ -1,4 +1,4 @@
-import { Attachment } from '@/types';
+import { Attachment, AttachmentCategory, PaginatedResponse } from '@/types';
 import { api } from '@/services/api';
 
 export interface CreateAttachmentPayload {
@@ -14,6 +14,10 @@ export interface CreateAttachmentPayload {
 }
 
 class AttachmentsService {
+  async getAttachmentCategories(page = 1): Promise<PaginatedResponse<AttachmentCategory>> {
+    return api.get<PaginatedResponse<AttachmentCategory>>('/transactions/attachment-categories/', { page });
+  }
+
   async createAttachment(payload: CreateAttachmentPayload): Promise<Attachment> {
     const formData = new FormData();
     formData.append('institution', payload.institution);
@@ -40,6 +44,10 @@ class AttachmentsService {
     }
 
     return api.upload<Attachment>('/transactions/attachments/', formData);
+  }
+
+  async downloadAttachment(id: string) {
+    return api.downloadBlob(`/transactions/attachments/${id}/download/`);
   }
 }
 

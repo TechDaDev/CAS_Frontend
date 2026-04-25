@@ -1,40 +1,96 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+
 import { Transaction, TransactionStatus, TransactionPriority } from '@/types';
 import { transactionsWorkspaceService } from '@/features/transactions/services/workspace';
 import { StatusBadge } from '@/components/StatusBadge';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
+import { PaginationControls } from '@/components/PaginationControls';
 import Link from 'next/link';
-import { uiLabels, transactionStatusLabels, priorityLabels } from '@/lib/ui-ar';
+import { priorityLabels, transactionStatusLabels } from '@/lib/ui-ar';
 
 interface TransactionListProps {
   showArchived?: boolean;
 }
 
 export function TransactionList({ showArchived = false }: TransactionListProps) {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<TransactionStatus | ''>('');
-  const [priorityFilter, setPriorityFilter] = useState<TransactionPriority | ''>('');
-  const [transactionType, setTransactionType] = useState('');
-  const [createdAtFrom, setCreatedAtFrom] = useState('');
-  const [createdAtTo, setCreatedAtTo] = useState('');
-  const [dueDateFrom, setDueDateFrom] = useState('');
-  const [dueDateTo, setDueDateTo] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? '');
 
-  const loadTransactions = async () => {
-    setIsLoading(true);
-    setError(null);
+  const currentPage = Number(searchParams.get('page') ?? '1') || 1;
+  const statusFilter = (searchParams.get('status') as TransactionStatus | null) ?? '';
+  const priorityFilter = (searchParams.get('priority') as TransactionPriority | null) ?? '';
+  const transactionType = searchParams.get('transaction_type') ?? '';
+  const createdAtFrom = searchParams.get('created_at_from') ?? '';
+  const createdAtTo = searchParams.get('created_at_to') ?? '';
+  const dueDateFrom = searchParams.get('due_date_from') ?? '';
+  const dueDateTo = searchParams.get('due_date_to') ?? '';
+  const searchQuery = searchParams.get('search') ?? '';
 
-    try {
-      const response = await transactionsWorkspaceService.getTransactions({
+  const hasFilters = Boolean(
+    searchQuery || statusFilter || priorityFilter || transactionType || createdAtFrom || createdAtTo || dueDateFrom || dueDateTo
+  );
+
+  useEffect(() => {
+    setSearchInput(searchQuery);
+  }, [searchQuery]);
+
+  const replaceParams = (updates: Record<string, string | null>) => {
+    const next = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!value) {
+        next.delete(key);
+      } else {
+        next.set(key, value);
+      }
+    });
+
+    if (!updates.page) {
+      next.set('page', '1');
+    }
+
+    router.replace(`${pathname}?${next.toString()}`);
+  };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (searchInput !== searchQuery) {
+        replaceParams({ search: searchInput || null, page: '1' });
+      }
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [searchInput, searchQuery]);
+
+  const queryKey = useMemo(
+    () => [
+      'transactions',
+      showArchived,
+      searchQuery,
+      statusFilter,
+      priorityFilter,
+      transactionType,
+      createdAtFrom,
+      createdAtTo,
+      dueDateFrom,
+      dueDateTo,
+      currentPage,
+    ],
+    [showArchived, searchQuery, statusFilter, priorityFilter, transactionType, createdAtFrom, createdAtTo, dueDateFrom, dueDateTo, currentPage]
+  );
+
+  const transactionsQuery = useQuery({
+    queryKey,
+    placeholderData: keepPreviousData,
+    queryFn: ({ signal }) =>
+      transactionsWorkspaceService.getTransactions({
         search: searchQuery || undefined,
         status: statusFilter || undefined,
         priority: priorityFilter || undefined,
@@ -45,56 +101,28 @@ export function TransactionList({ showArchived = false }: TransactionListProps) 
         dueDateTo: dueDateTo || undefined,
         page: currentPage,
         isArchived: showArchived,
-      });
+        signal,
+      }),
+  });
 
-      setTransactions(response.results);
-      setTotalCount(response.count);
-    } catch (err) {
-      setError('Failed to load transactions');
-      console.error('Transaction load error:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadTransactions();
-  }, [currentPage, statusFilter, priorityFilter, showArchived]);
-
-  const handleSearch = (e: FormEvent) => {
-    e.preventDefault();
-    setCurrentPage(1);
-    loadTransactions();
-  };
-
-  const handleClearFilters = () => {
-    setSearchQuery('');
-    setStatusFilter('');
-    setPriorityFilter('');
-    setTransactionType('');
-    setCreatedAtFrom('');
-    setCreatedAtTo('');
-    setDueDateFrom('');
-    setDueDateTo('');
-    setCurrentPage(1);
-  };
-
-  const hasFilters = searchQuery || statusFilter || priorityFilter || transactionType || 
-                     createdAtFrom || createdAtTo || dueDateFrom || dueDateTo;
-
-  if (isLoading && transactions.length === 0) {
+  if (transactionsQuery.isLoading && !transactionsQuery.data) {
     return <LoadingState message="جارٍ تحميل المعاملات..." />;
   }
 
-  if (error && transactions.length === 0) {
+  if (transactionsQuery.error && !transactionsQuery.data) {
     return (
       <ErrorState
         title="فشل تحميل المعاملات"
-        message={error}
-        onRetry={loadTransactions}
+        message="تعذر تحميل قائمة المعاملات. حاول مرة أخرى."
+        onRetry={() => transactionsQuery.refetch()}
       />
     );
   }
+
+  const transactions = transactionsQuery.data?.results ?? [];
+  const totalCount = transactionsQuery.data?.count ?? 0;
+  const hasNextPage = Boolean(transactionsQuery.data?.next);
+  const hasPreviousPage = Boolean(transactionsQuery.data?.previous);
 
   const statusOptions: TransactionStatus[] = ['draft', 'submitted', 'in_progress', 'pending', 'completed', 'cancelled'];
   const priorityOptions: TransactionPriority[] = ['low', 'normal', 'high', 'urgent'];
@@ -103,15 +131,15 @@ export function TransactionList({ showArchived = false }: TransactionListProps) 
     <div className="space-y-4">
       {/* Search and Filters */}
       <div className="rounded-lg border border-slate-200 bg-white p-4">
-        <form onSubmit={handleSearch} className="space-y-4">
+        <div className="space-y-4">
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex-1">
               <div className="relative">
                 <input
                   type="text"
                   placeholder="البحث في المعاملات..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="w-full rounded-md border border-slate-300 px-10 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <svg className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -122,7 +150,7 @@ export function TransactionList({ showArchived = false }: TransactionListProps) 
             <div className="flex gap-2 flex-wrap">
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as TransactionStatus | '')}
+                onChange={(e) => replaceParams({ status: e.target.value || null })}
                 className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="">جميع الحالات</option>
@@ -134,7 +162,7 @@ export function TransactionList({ showArchived = false }: TransactionListProps) 
               </select>
               <select
                 value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value as TransactionPriority | '')}
+                onChange={(e) => replaceParams({ priority: e.target.value || null })}
                 className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="">جميع الأولويات</option>
@@ -144,12 +172,13 @@ export function TransactionList({ showArchived = false }: TransactionListProps) 
                   </option>
                 ))}
               </select>
-              <button
-                type="submit"
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                بحث
-              </button>
+              <input
+                type="text"
+                value={transactionType}
+                onChange={(e) => replaceParams({ transaction_type: e.target.value || null })}
+                placeholder="نوع المعاملة"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
             </div>
           </div>
           
@@ -160,7 +189,7 @@ export function TransactionList({ showArchived = false }: TransactionListProps) 
               <input
                 type="date"
                 value={createdAtFrom}
-                onChange={(e) => setCreatedAtFrom(e.target.value)}
+                onChange={(e) => replaceParams({ created_at_from: e.target.value || null })}
                 className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -169,7 +198,7 @@ export function TransactionList({ showArchived = false }: TransactionListProps) 
               <input
                 type="date"
                 value={createdAtTo}
-                onChange={(e) => setCreatedAtTo(e.target.value)}
+                onChange={(e) => replaceParams({ created_at_to: e.target.value || null })}
                 className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -178,7 +207,7 @@ export function TransactionList({ showArchived = false }: TransactionListProps) 
               <input
                 type="date"
                 value={dueDateFrom}
-                onChange={(e) => setDueDateFrom(e.target.value)}
+                onChange={(e) => replaceParams({ due_date_from: e.target.value || null })}
                 className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -187,7 +216,7 @@ export function TransactionList({ showArchived = false }: TransactionListProps) 
               <input
                 type="date"
                 value={dueDateTo}
-                onChange={(e) => setDueDateTo(e.target.value)}
+                onChange={(e) => replaceParams({ due_date_to: e.target.value || null })}
                 className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -200,14 +229,19 @@ export function TransactionList({ showArchived = false }: TransactionListProps) 
               </span>
               <button
                 type="button"
-                onClick={handleClearFilters}
+                onClick={() => {
+                  setSearchInput('');
+                  const next = new URLSearchParams(searchParams.toString());
+                  ['search', 'status', 'priority', 'transaction_type', 'created_at_from', 'created_at_to', 'due_date_from', 'due_date_to', 'page'].forEach((key) => next.delete(key));
+                  router.replace(`${pathname}?${next.toString()}`);
+                }}
                 className="text-sm text-blue-600 hover:text-blue-700"
               >
                 مسح التصفية
               </button>
             </div>
           )}
-        </form>
+        </div>
       </div>
 
       {/* Transaction Table */}
@@ -281,31 +315,16 @@ export function TransactionList({ showArchived = false }: TransactionListProps) 
           </div>
         )}
 
-        {/* Pagination */}
-        {totalCount > 20 && (
-          <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
-            <div className="text-sm text-slate-600">
-              عرض {((currentPage - 1) * 20) + 1} - {Math.min(currentPage * 20, totalCount)} من {totalCount}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                السابق
-              </button>
-              <button
-                onClick={() => setCurrentPage(p => p + 1)}
-                disabled={currentPage * 20 >= totalCount}
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                التالي
-              </button>
-            </div>
-          </div>
-        )}
       </div>
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalItems={totalCount}
+        hasNextPage={hasNextPage}
+        hasPreviousPage={hasPreviousPage}
+        onPageChange={(page) => replaceParams({ page: String(page) })}
+        isLoading={transactionsQuery.isFetching}
+      />
     </div>
   );
 }
