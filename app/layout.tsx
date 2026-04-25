@@ -10,7 +10,7 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: `${env.NEXT_PUBLIC_APP_NAME} - منصة OMS`,
+  title: "نظام ادارة المعاملات الادارية",
   description: "منصة أتمتة سير العمل الإداري للمؤسسات الأكاديمية",
 };
 

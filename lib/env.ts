@@ -6,9 +6,29 @@ const rawEnvSchema = z.object({
   NEXT_PUBLIC_DEFAULT_LOCALE: z.string().trim().min(2).default('ar'),
 });
 
+const DEFAULT_API_ORIGIN = 'https://corrarchivsystem.up.railway.app';
+const INVALID_FRONTEND_API_HOSTS = new Set(['casplatform.up.railway.app']);
+
 function normalizeApiUrl(input: string): string {
   const trimmed = input.trim().replace(/\/+$/, '');
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
+
+function resolveConfiguredApiUrl(input: string | undefined): string {
+  if (!input) {
+    return normalizeApiUrl(DEFAULT_API_ORIGIN);
+  }
+
+  try {
+    const parsed = new URL(input);
+    if (INVALID_FRONTEND_API_HOSTS.has(parsed.hostname)) {
+      return normalizeApiUrl(DEFAULT_API_ORIGIN);
+    }
+  } catch {
+    return normalizeApiUrl(DEFAULT_API_ORIGIN);
+  }
+
+  return normalizeApiUrl(input);
 }
 
 function resolveEnv() {
@@ -23,10 +43,7 @@ function resolveEnv() {
   }
 
   const configuredApiUrl = parsed.data.NEXT_PUBLIC_API_URL?.trim();
-
-  const apiUrl = configuredApiUrl
-    ? normalizeApiUrl(configuredApiUrl)
-    : normalizeApiUrl('https://corrarchivsystem.up.railway.app');
+  const apiUrl = resolveConfiguredApiUrl(configuredApiUrl);
 
   return {
     NEXT_PUBLIC_API_URL: apiUrl,

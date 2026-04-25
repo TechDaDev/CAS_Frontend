@@ -6,6 +6,26 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { ApiError } from '@/services/api';
 
+function getLoginErrorMessage(error: ApiError): string {
+  const detail = typeof error.data === 'object' && error.data !== null && 'detail' in error.data
+    ? (error.data as { detail?: string }).detail
+    : undefined;
+
+  if (detail && !/<[a-z][\s\S]*>/i.test(detail) && !detail.startsWith('<!doctype')) {
+    return detail;
+  }
+
+  if (error.status === 404) {
+    return 'تعذر الوصول إلى خدمة تسجيل الدخول. تحقق من إعدادات الاتصال بالخادم.';
+  }
+
+  if (error.status === 0) {
+    return 'تعذر الاتصال بالخادم. تحقق من الشبكة ثم حاول مرة أخرى.';
+  }
+
+  return 'بيانات الاعتماد غير صالحة. يرجى المحاولة مرة أخرى.';
+}
+
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -27,8 +47,7 @@ function LoginPageContent() {
       router.replace(destination);
     } catch (err) {
       if (err instanceof ApiError) {
-        const errorData = err.data as { detail?: string } | undefined;
-        setError(errorData?.detail || 'بيانات الاعتماد غير صالحة. يرجى المحاولة مرة أخرى.');
+        setError(getLoginErrorMessage(err));
       } else {
         setError('حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.');
       }

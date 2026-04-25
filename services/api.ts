@@ -167,7 +167,7 @@ function buildUrl(endpoint: string, params?: Record<string, QueryValue>) {
     url.searchParams.set(key, String(value));
   });
 
-  return endpoint.startsWith('http') ? url.toString() : `${url.pathname}${url.search}`;
+  return url.toString();
 }
 
 function parseRetryAfter(headerValue: string | null): number | null {
@@ -299,7 +299,7 @@ class ApiClient {
       }
 
       const url = buildUrl(endpoint, options.params);
-      const response = await fetch(endpoint.startsWith('http') ? url : `${API_BASE_URL}${url}`, {
+      const response = await fetch(url, {
         ...options,
         headers,
         body,
