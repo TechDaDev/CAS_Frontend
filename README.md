@@ -33,8 +33,7 @@ NEXT_PUBLIC_DEFAULT_LOCALE=ar
 
 ملاحظات:
 
-- في بيئة الإنتاج، `NEXT_PUBLIC_API_URL` مطلوب ولا يوجد fallback صامت.
-- إذا لم يتم تعريف `NEXT_PUBLIC_API_URL` فسيستخدم التطبيق `https://corrarchivsystem.up.railway.app/api`.
+- إذا لم يتم تعريف `NEXT_PUBLIC_API_URL` فسيستخدم التطبيق `https://corrarchivsystem.up.railway.app/api` في التطوير والإنتاج.
 - يضيف `lib/env.ts` لاحقة `/api` تلقائياً عند الحاجة.
 
 ## عنوان الـ backend
@@ -94,7 +93,7 @@ npm run build
 
 ## ملاحظات النشر
 
-- تأكد من تعريف `NEXT_PUBLIC_API_URL` في بيئة الإنتاج.
+- يفضّل تعريف `NEXT_PUBLIC_API_URL` صراحةً في بيئة الإنتاج، لكن التطبيق يملك fallback افتراضياً إلى `https://corrarchivsystem.up.railway.app/api`.
 - إذا كان backend يستخدم media محمية، أبقِ تنزيل المرفقات عبر endpoint المحمي فقط.
 - شغّل قبل النشر:
 

@@ -22,12 +22,7 @@ function resolveEnv() {
     throw new Error(`Invalid environment configuration: ${parsed.error.message}`);
   }
 
-  const isProduction = process.env.NODE_ENV === 'production';
   const configuredApiUrl = parsed.data.NEXT_PUBLIC_API_URL?.trim();
-
-  if (isProduction && !configuredApiUrl) {
-    throw new Error('NEXT_PUBLIC_API_URL is required in production.');
-  }
 
   const apiUrl = configuredApiUrl
     ? normalizeApiUrl(configuredApiUrl)
