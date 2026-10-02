@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { UnitTreeNode } from '@/types';
 import { organizationService } from '@/services/organization';
 import { PageHeader } from '@/components/PageHeader';
+import { OrganizationAccessGuard } from '@/components/organization/OrganizationAccessGuard';
 import { OrganizationTree } from '@/components/organization/OrganizationTree';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
@@ -12,6 +13,14 @@ import { EmptyState } from '@/components/EmptyState';
 import Link from 'next/link';
 
 export default function OrganizationTreePage() {
+  return (
+    <OrganizationAccessGuard>
+      <OrganizationTreeContent />
+    </OrganizationAccessGuard>
+  );
+}
+
+function OrganizationTreeContent() {
   const { user } = useAuth();
   const [treeData, setTreeData] = useState<UnitTreeNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);

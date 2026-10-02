@@ -18,12 +18,41 @@ export interface CurrentUser {
   is_staff: boolean;
   is_superuser: boolean;
   institution_id?: string | null;
+  institution_ids?: string[];
   institution_name: string | null;
   profile_institution?: string | null;
   user_category?: UserCategory | null;
+  roles?: string[];
+  primary_role?: PrimaryRole | null;
+  primary_position?: PrimaryPosition | null;
+  primary_unit?: PrimaryUnit | null;
   profile_image?: string | null;
   permissions?: string[];
-  access_summary?: TransactionAccessSummary;
+  access_summary?: AccessSummary;
+}
+
+/**
+ * Display-only organizational identity.
+ *
+ * These fields answer "what do we call this person?". They must never be used
+ * to decide access: authorization comes from `access_summary` and from the
+ * backend write gates. `primary_role.name` is a `RoleDefinition.name` supplied
+ * by the backend, so installations can define their own roles without a
+ * frontend change.
+ */
+export interface PrimaryRole {
+  code: string;
+  name: string;
+}
+
+export interface PrimaryPosition {
+  id: string;
+  title: string;
+}
+
+export interface PrimaryUnit {
+  id: string;
+  name: string;
 }
 
 export type UserCategory = 'teaching' | 'staff';
@@ -38,6 +67,9 @@ export interface InstitutionUser {
   last_name: string;
   full_name: string;
   user_category: UserCategory;
+  /** Effective organizational role for display; separate from the category. */
+  primary_role?: PrimaryRole | null;
+  primary_unit?: PrimaryUnit | null;
   profile_image: string | null;
   is_active: boolean;
   created_at: string;
@@ -97,7 +129,47 @@ export interface TransactionWorkflowSnapshot {
   last_approval_id?: string | null;
 }
 
-export interface TransactionAccessSummary {
+/**
+ * Authoritative capability summary produced by the backend
+ * (`GET /api/auth/me/` → `access_summary`).
+ *
+ * The frontend must read permissions from here and nowhere else. It must never
+ * derive them from `is_staff`, UI state or hardcoded role names.
+ */
+export interface AccessSummary {
+  // --- organization ---------------------------------------------------------
+  can_view_organization?: boolean;
+  can_manage_structure_definitions?: boolean;
+  can_create_unit?: boolean;
+  can_update_unit?: boolean;
+  can_create_position?: boolean;
+  can_update_position?: boolean;
+  can_create_assignment?: boolean;
+  can_update_assignment?: boolean;
+  can_manage_structure_rules?: boolean;
+  can_manage_institution_users?: boolean;
+  can_create_institution_user?: boolean;
+  can_manage_committees?: boolean;
+  // --- workflow -------------------------------------------------------------
+  can_create_transaction?: boolean;
+  can_update_transaction?: boolean;
+  can_route_transaction?: boolean;
+  can_approve_transaction?: boolean;
+  can_register_incoming?: boolean;
+  can_register_outgoing?: boolean;
+  can_prepare_print?: boolean;
+  can_record_wet_signature?: boolean;
+  can_record_dispatch?: boolean;
+  can_upload_attachment?: boolean;
+  can_view_attachment?: boolean;
+  can_view_audit?: boolean;
+  can_view_reports?: boolean;
+}
+
+/** Kept as an alias: transaction payloads carry the same capability shape. */
+export type TransactionAccessSummary = AccessSummary;
+
+export interface TransactionAccessSummaryLegacy {
   can_create_transaction?: boolean;
   can_update_transaction?: boolean;
   can_route_transaction?: boolean;

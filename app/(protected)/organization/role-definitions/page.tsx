@@ -5,13 +5,25 @@ import { useAuth } from '@/hooks/useAuth';
 import { RoleDefinition } from '@/types';
 import { organizationService } from '@/services/organization';
 import { PageHeader } from '@/components/PageHeader';
+import { OrganizationAccessGuard } from '@/components/organization/OrganizationAccessGuard';
 import { EntityTable, Column } from '@/components/management/EntityTable';
 import { EntityFormModal } from '@/components/management/EntityFormModal';
 import { FilterBar } from '@/components/management/FilterBar';
 import { PaginationControls } from '@/components/PaginationControls';
+import { resolveLoadErrorMessage } from '@/lib/org-actions';
 import Link from 'next/link';
 
 export default function RoleDefinitionsPage() {
+  // Role definitions stay with the dean or the platform super admin; a
+  // delegated manager must never be able to invent a role for escalation.
+  return (
+    <OrganizationAccessGuard capability="manage_structure_definitions">
+      <RoleDefinitionsContent />
+    </OrganizationAccessGuard>
+  );
+}
+
+function RoleDefinitionsContent() {
   const { user } = useAuth();
   const [roleDefinitions, setRoleDefinitions] = useState<RoleDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,8 +54,8 @@ export default function RoleDefinitionsPage() {
       setTotalItems(response.count);
       setHasNextPage(Boolean(response.next));
       setHasPreviousPage(Boolean(response.previous));
-    } catch {
-      setError('فشل تحميل تعريفات الأدوار');
+    } catch (err: unknown) {
+      setError(resolveLoadErrorMessage(err, 'تعذر تحميل تعريفات الأدوار'));
     } finally {
       setIsLoading(false);
     }
@@ -121,11 +133,12 @@ export default function RoleDefinitionsPage() {
     { key: 'name', header: 'الاسم' },
     { key: 'code', header: 'الرمز' },
     { key: 'description', header: 'الوصف', render: (item) => item.description || '-' },
-    { key: 'can_create_transactions', header: 'إنشاء معاملة', render: (item) => (item.can_create_transactions ? 'نعم' : 'لا') },
-    { key: 'can_approve', header: 'موافقة', render: (item) => (item.can_approve ? 'نعم' : 'لا') },
-    { key: 'can_route', header: 'إحالة', render: (item) => (item.can_route ? 'نعم' : 'لا') },
     { key: 'is_active', header: 'نشط', render: (item) => (item.is_active ? 'نعم' : 'لا') },
   ];
+
+  // RoleDefinition intentionally carries no capability booleans: authority lives
+  // in StructurePermissionRule. The removed columns previously displayed fields
+  // the backend never sends.
 
   const filterFields = [
     { key: 'isActive', label: 'نشط فقط', type: 'checkbox' as const },

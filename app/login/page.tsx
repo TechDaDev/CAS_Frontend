@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 import { useAuth } from '@/hooks/useAuth';
 import { ApiError } from '@/services/api';
+import { resolveRedirectTarget } from '@/lib/user-identity';
 
 function getLoginErrorMessage(error: ApiError): string {
   const detail = typeof error.data === 'object' && error.data !== null && 'detail' in error.data
@@ -42,8 +43,13 @@ function LoginPageContent() {
 
     try {
       const userData = await login(email, password);
-      const redirect = searchParams.get('redirect');
-      const destination = redirect || (userData.is_superuser ? '/platform' : '/dashboard');
+      // The `redirect` parameter is validated against the caller's role area.
+      // A platform administrator is never sent into the institution workspace,
+      // and an institution user is never sent into the platform area.
+      const destination = resolveRedirectTarget(
+        userData,
+        searchParams.get('redirect'),
+      );
       router.replace(destination);
     } catch (err) {
       if (err instanceof ApiError) {

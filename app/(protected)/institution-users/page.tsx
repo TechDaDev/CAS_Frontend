@@ -239,6 +239,11 @@ export default function InstitutionUsersPage() {
                 <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                   الفئة
                 </th>
+                {/* Category (تدريسي / موظف) and role (عميد الكلية ...) are
+                    different concepts and get separate columns. */}
+                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  الدور
+                </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                   الحالة
                 </th>
@@ -278,6 +283,9 @@ export default function InstitutionUsersPage() {
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <UserCategoryBadge category={institutionUser.user_category} />
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
+                    {institutionUser.primary_role?.name || '-'}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span

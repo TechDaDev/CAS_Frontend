@@ -24,22 +24,60 @@ export const TransactionWorkflowSnapshotSchema = z.object({
   last_approval_id: optionalNullableString,
 });
 
-export const TransactionAccessSummarySchema = z.object({
-  can_create_transaction: z.boolean().optional(),
-  can_update_transaction: z.boolean().optional(),
-  can_route_transaction: z.boolean().optional(),
-  can_approve_transaction: z.boolean().optional(),
-  can_register_incoming: z.boolean().optional(),
-  can_register_outgoing: z.boolean().optional(),
-  can_prepare_print: z.boolean().optional(),
-  can_record_wet_signature: z.boolean().optional(),
-  can_record_dispatch: z.boolean().optional(),
-  can_upload_attachment: z.boolean().optional(),
-  can_view_attachment: z.boolean().optional(),
-  can_manage_institution_users: z.boolean().optional(),
-  can_view_audit: z.boolean().optional(),
-  can_view_reports: z.boolean().optional(),
-}).partial();
+export const AccessSummarySchema = z
+  .object({
+    // organization
+    can_view_organization: z.boolean().optional(),
+    can_manage_structure_definitions: z.boolean().optional(),
+    can_create_unit: z.boolean().optional(),
+    can_update_unit: z.boolean().optional(),
+    can_create_position: z.boolean().optional(),
+    can_update_position: z.boolean().optional(),
+    can_create_assignment: z.boolean().optional(),
+    can_update_assignment: z.boolean().optional(),
+    can_manage_structure_rules: z.boolean().optional(),
+    can_manage_institution_users: z.boolean().optional(),
+    can_create_institution_user: z.boolean().optional(),
+    can_manage_committees: z.boolean().optional(),
+    // workflow
+    can_create_transaction: z.boolean().optional(),
+    can_update_transaction: z.boolean().optional(),
+    can_route_transaction: z.boolean().optional(),
+    can_approve_transaction: z.boolean().optional(),
+    can_register_incoming: z.boolean().optional(),
+    can_register_outgoing: z.boolean().optional(),
+    can_prepare_print: z.boolean().optional(),
+    can_record_wet_signature: z.boolean().optional(),
+    can_record_dispatch: z.boolean().optional(),
+    can_upload_attachment: z.boolean().optional(),
+    can_view_attachment: z.boolean().optional(),
+    can_view_audit: z.boolean().optional(),
+    can_view_reports: z.boolean().optional(),
+  })
+  .partial();
+
+/** Kept as an alias so transaction schemas keep validating the same shape. */
+export const TransactionAccessSummarySchema = AccessSummarySchema;
+
+/**
+ * Display identity. Parsed here so Zod keeps it: the sidebar and the profile
+ * page read these fields, and a stripped `primary_role` would silently degrade
+ * every job title to the neutral fallback.
+ */
+export const PrimaryRoleSchema = z.object({
+  code: z.string(),
+  name: z.string(),
+});
+
+export const PrimaryPositionSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+});
+
+export const PrimaryUnitSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
 
 export const CurrentUserSchema = z.object({
   id: z.string().min(1),
@@ -50,12 +88,17 @@ export const CurrentUserSchema = z.object({
   is_staff: z.boolean(),
   is_superuser: z.boolean(),
   institution_id: optionalNullableString,
+  institution_ids: z.array(z.string()).optional(),
   institution_name: nullableString,
   profile_institution: optionalNullableString,
   user_category: UserCategorySchema.nullable().optional(),
+  roles: z.array(z.string()).optional(),
+  primary_role: PrimaryRoleSchema.nullable().optional(),
+  primary_position: PrimaryPositionSchema.nullable().optional(),
+  primary_unit: PrimaryUnitSchema.nullable().optional(),
   profile_image: optionalNullableString,
   permissions: z.array(z.string()).optional(),
-  access_summary: TransactionAccessSummarySchema.optional(),
+  access_summary: AccessSummarySchema.optional(),
 });
 
 export const PaginatedResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>

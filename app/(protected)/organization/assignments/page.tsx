@@ -4,16 +4,32 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Assignment, Position, Unit, RoleDefinition } from '@/types';
 import { organizationService } from '@/services/organization';
+import { institutionUsersService } from '@/services/institutionUsers';
 import { PageHeader } from '@/components/PageHeader';
+import { OrganizationAccessGuard } from '@/components/organization/OrganizationAccessGuard';
 import { EntityTable, Column } from '@/components/management/EntityTable';
 import { EntityFormModal } from '@/components/management/EntityFormModal';
 import { FilterBar } from '@/components/management/FilterBar';
 import { PaginationControls } from '@/components/PaginationControls';
+import { usePermissions } from '@/hooks/usePermissions';
+import { resolveLoadErrorMessage } from '@/lib/org-actions';
 import Link from 'next/link';
 
 export default function AssignmentsPage() {
+  return (
+    <OrganizationAccessGuard>
+      <AssignmentsContent />
+    </OrganizationAccessGuard>
+  );
+}
+
+function AssignmentsContent() {
   const { user } = useAuth();
+  const permissions = usePermissions();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [candidateUsers, setCandidateUsers] = useState<
+    Array<{ id: string; full_name: string; email: string }>
+  >([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [roleDefinitions, setRoleDefinitions] = useState<RoleDefinition[]>([]);
@@ -30,6 +46,60 @@ export default function AssignmentsPage() {
   const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   const institutionId = user?.institution_id || '';
+
+  // Two ways to offer a user selector, in descending order of authority:
+  //
+  //  * institution-user administration (dean / platform super admin) may list
+  //    the institution's users;
+  //  * a delegated manager who holds `create_assignment` / `update_assignment`
+  //    but no user administration uses the narrowly scoped candidates
+  //    endpoint, which is not a user-management surface;
+  //  * when neither is available the raw UUID field stays. Authorization is
+  //    never broadened just to make the form nicer.
+  const canAdministerUsers = permissions.canManageInstitutionUsers;
+  const canListCandidates =
+    permissions.canCreateAssignment || permissions.canUpdateAssignment;
+  const canSelectUsers = canAdministerUsers || canListCandidates;
+
+  const loadCandidateUsers = useCallback(async () => {
+    if (!institutionId || !canSelectUsers) {
+      setCandidateUsers([]);
+      return;
+    }
+
+    if (canAdministerUsers) {
+      try {
+        const response = await institutionUsersService.listInstitutionUsers({
+          institution: institutionId,
+          is_active: true,
+        });
+        setCandidateUsers(
+          response.results.map((candidate) => ({
+            id: candidate.id,
+            full_name:
+              candidate.full_name ||
+              `${candidate.first_name} ${candidate.last_name}`.trim(),
+            email: candidate.email,
+          })),
+        );
+      } catch {
+        setCandidateUsers([]);
+      }
+      return;
+    }
+
+    try {
+      const candidates = await organizationService.getAssignmentCandidates(institutionId);
+      setCandidateUsers(candidates);
+    } catch {
+      // Refused or unavailable: fall back to the raw identifier field.
+      setCandidateUsers([]);
+    }
+  }, [institutionId, canSelectUsers, canAdministerUsers]);
+
+  useEffect(() => {
+    loadCandidateUsers();
+  }, [loadCandidateUsers]);
 
   const loadAssignments = useCallback(async () => {
     if (!institutionId) return;
@@ -48,8 +118,8 @@ export default function AssignmentsPage() {
       setTotalItems(assignmentsResponse.count);
       setHasNextPage(Boolean(assignmentsResponse.next));
       setHasPreviousPage(Boolean(assignmentsResponse.previous));
-    } catch {
-      setError('فشل تحميل التخصيصات');
+    } catch (err: unknown) {
+      setError(resolveLoadErrorMessage(err, 'تعذر تحميل التخصيصات'));
     } finally {
       setIsLoading(false);
     }
@@ -224,7 +294,18 @@ export default function AssignmentsPage() {
   ];
 
   const formFields = [
-    { key: 'user', label: 'معرف المستخدم', type: 'text' as const, required: true },
+    canSelectUsers
+      ? {
+          key: 'user',
+          label: 'المستخدم',
+          type: 'select' as const,
+          required: true,
+          options: candidateUsers.map((candidate) => ({
+            value: candidate.id,
+            label: `${candidate.full_name} — ${candidate.email}`,
+          })),
+        }
+      : { key: 'user', label: 'معرف المستخدم', type: 'text' as const, required: true },
     {
       key: 'organizational_unit',
       label: 'الوحدة',
@@ -259,16 +340,18 @@ export default function AssignmentsPage() {
         <Link href="/organization" className="text-sm text-blue-600 hover:text-blue-800">
           ← العودة إلى الهيكل التنظيمي
         </Link>
-        <button
-          onClick={() => {
-            setEditingAssignment(null);
-            setFormErrors({});
-            setIsModalOpen(true);
-          }}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          إنشاء تخصيص
-        </button>
+        {permissions.canCreateAssignment && (
+          <button
+            onClick={() => {
+              setEditingAssignment(null);
+              setFormErrors({});
+              setIsModalOpen(true);
+            }}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            إنشاء تخصيص
+          </button>
+        )}
       </div>
 
       <div className="mb-4">
@@ -292,7 +375,7 @@ export default function AssignmentsPage() {
         columns={columns}
         data={assignments}
         keyExtractor={(item) => item.id}
-        onEdit={handleEdit}
+        onEdit={permissions.canUpdateAssignment ? handleEdit : undefined}
         isLoading={isLoading}
       />
 

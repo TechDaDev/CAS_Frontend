@@ -20,7 +20,18 @@ export type PermissionAction =
   | 'view_attachment'
   | 'manage_institution_users'
   | 'view_audit'
-  | 'view_reports';
+  | 'view_reports'
+  // organization structure management
+  | 'view_organization'
+  | 'manage_structure_definitions'
+  | 'create_unit'
+  | 'update_unit'
+  | 'create_position'
+  | 'update_position'
+  | 'create_assignment'
+  | 'update_assignment'
+  | 'manage_structure_rules'
+  | 'manage_committees';
 
 const permissionToSummaryField: Record<PermissionAction, keyof NonNullable<CurrentUser['access_summary']>> = {
   create_transaction: 'can_create_transaction',
@@ -37,6 +48,16 @@ const permissionToSummaryField: Record<PermissionAction, keyof NonNullable<Curre
   manage_institution_users: 'can_manage_institution_users',
   view_audit: 'can_view_audit',
   view_reports: 'can_view_reports',
+  view_organization: 'can_view_organization',
+  manage_structure_definitions: 'can_manage_structure_definitions',
+  create_unit: 'can_create_unit',
+  update_unit: 'can_update_unit',
+  create_position: 'can_create_position',
+  update_position: 'can_update_position',
+  create_assignment: 'can_create_assignment',
+  update_assignment: 'can_update_assignment',
+  manage_structure_rules: 'can_manage_structure_rules',
+  manage_committees: 'can_manage_committees',
 };
 
 function canUser(user: CurrentUser | null, action: PermissionAction): boolean {
@@ -44,6 +65,10 @@ function canUser(user: CurrentUser | null, action: PermissionAction): boolean {
     return false;
   }
 
+  // The platform super admin is the only frontend-wide override. `is_staff` is
+  // a Django administration flag and is deliberately NOT used here: the backend
+  // capability summary is the single source of truth, and missing capability
+  // data fails closed.
   if (user.is_superuser) {
     return true;
   }
@@ -58,20 +83,7 @@ function canUser(user: CurrentUser | null, action: PermissionAction): boolean {
     return true;
   }
 
-  if (!user.is_staff) {
-    return false;
-  }
-
-  switch (action) {
-    case 'view_attachment':
-    case 'view_reports':
-    case 'upload_attachment':
-    case 'create_transaction':
-    case 'update_transaction':
-      return true;
-    default:
-      return false;
-  }
+  return false;
 }
 
 interface AuthContextType {

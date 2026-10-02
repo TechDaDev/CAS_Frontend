@@ -6,6 +6,29 @@ import { CurrentUser } from '@/types';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { PageHeader } from '@/components/PageHeader';
+import { FallbackImage } from '@/components/common/FallbackImage';
+import {
+  isPlatformSuperAdmin,
+  resolveCategoryLabel,
+  resolvePositionLabel,
+  resolveRoleLabel,
+  resolveUnitLabel,
+} from '@/lib/user-identity';
+
+/**
+ * Cache-buster for the protected profile image.
+ *
+ * The image is fetched with the JWT by the API client, so a newly uploaded photo
+ * must produce a new URL. Without this, the browser and the object URL would keep
+ * serving the previous image until a logout.
+ */
+function withImageVersion(url: string | null | undefined, version: number): string | null {
+  if (!url || version === 0) {
+    return url ?? null;
+  }
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${version}`;
+}
 
 function getInitials(firstName: string, lastName: string): string {
   return `${(firstName || 'U')[0]}${(lastName || 'S')[0]}`.toUpperCase();
@@ -89,8 +112,11 @@ export default function ProfilePage() {
   // Form state
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
+  // Preview of a locally selected file only. A stored image is never rendered
+  // from its protected URL directly: `FallbackImage` fetches it with the JWT.
+  const [newImagePreview, setNewImagePreview] = useState<string | null>(null);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [imageVersion, setImageVersion] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -101,7 +127,6 @@ export default function ProfilePage() {
         setUser(userData);
         setFirstName(userData.first_name || '');
         setLastName(userData.last_name || '');
-        setProfileImagePreview(userData.profile_image || null);
       } catch {
         setError('فشل تحميل بيانات الملف الشخصي.');
       } finally {
@@ -124,7 +149,7 @@ export default function ProfilePage() {
     if (user) {
       setFirstName(user.first_name || '');
       setLastName(user.last_name || '');
-      setProfileImagePreview(user.profile_image || null);
+      setNewImagePreview(null);
       setProfileImageFile(null);
     }
   };
@@ -133,9 +158,11 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (file) {
       setProfileImageFile(file);
+      // A local FileReader preview for the file that has not been uploaded yet
+      // is fine; the stored image always goes through the authenticated loader.
       const reader = new FileReader();
       reader.onloadend = () => {
-        setProfileImagePreview(reader.result as string);
+        setNewImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -170,8 +197,11 @@ export default function ProfilePage() {
       setUser(refreshedUser);
       setFirstName(refreshedUser.first_name || '');
       setLastName(refreshedUser.last_name || '');
-      setProfileImagePreview(refreshedUser.profile_image || null);
+      setNewImagePreview(null);
       setProfileImageFile(null);
+      // Force a re-fetch of the protected image so the new photo appears on the
+      // profile page and in the sidebar without a logout.
+      setImageVersion((previous) => previous + 1);
       setIsEditing(false);
     } catch (err) {
       let errorMessage = 'فشل حفظ البيانات.';
@@ -194,6 +224,11 @@ export default function ProfilePage() {
     return <ErrorState title="خطأ" message={error || 'فشل تحميل الملف الشخصي'} />;
   }
 
+  // The platform administrator is not an institution employee. The institution
+  // profile route stays reachable, but it shows a platform account instead of
+  // institution, category, position and unit fields that do not apply.
+  const isSuperuser = isPlatformSuperAdmin(user);
+
   return (
     <div className="space-y-6">
       <PageHeader title="ملفي الشخصي" subtitle="عرض وتحديث معلومات الملف الشخصي الخاص بك" />
@@ -209,15 +244,12 @@ export default function ProfilePage() {
           <>
             <div className="flex flex-col gap-4 border-b border-slate-100 pb-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex gap-4">
-                {profileImagePreview ? (
-                  <img
-                    src={profileImagePreview}
-                    alt={`${user.first_name} ${user.last_name}`}
-                    className="h-16 w-16 rounded-full object-cover"
-                  />
-                ) : (
-                  <AvatarFallback name={`${user.first_name} ${user.last_name}`} size="lg" />
-                )}
+                <FallbackImage
+                  src={withImageVersion(user.profile_image, imageVersion)}
+                  alt={`${user.first_name} ${user.last_name}`}
+                  className="h-16 w-16 rounded-full object-cover"
+                  fallback={<AvatarFallback name={`${user.first_name} ${user.last_name}`} />}
+                />
                 <div>
                   <h2 className="text-xl font-semibold text-slate-900">
                     {user.first_name} {user.last_name}
@@ -238,10 +270,32 @@ export default function ProfilePage() {
               <ReadOnlyField label="البريد الإلكتروني" value={user.email} />
               <ReadOnlyField label="الاسم الأول" value={user.first_name || '-'} />
               <ReadOnlyField label="الاسم الأخير" value={user.last_name || '-'} />
-              <ReadOnlyField label="اسم المؤسسة" value={user.institution_name || '-'} />
+              {isSuperuser ? (
+                <ReadOnlyField label="نوع الحساب" value={resolveRoleLabel(user)} />
+              ) : (
+                <>
+                  <ReadOnlyField
+                    label="اسم المؤسسة"
+                    value={user.institution_name || '-'}
+                  />
+                  {/* Category and role are different concepts: "تدريسي" is a
+                      personnel classification, the role is the job title. */}
+                  <ReadOnlyField
+                    label="الفئة"
+                    value={resolveCategoryLabel(user.user_category)}
+                  />
+                  <ReadOnlyField label="الدور" value={resolveRoleLabel(user)} />
+                  <ReadOnlyField
+                    label="المنصب"
+                    value={resolvePositionLabel(user) || '-'}
+                  />
+                  <ReadOnlyField
+                    label="الوحدة التنظيمية"
+                    value={resolveUnitLabel(user) || '-'}
+                  />
+                </>
+              )}
               <BooleanField label="الحساب نشط" value={user.is_active} />
-              <BooleanField label="عضو فريق العمل" value={user.is_staff} />
-              <BooleanField label="مسؤول عام" value={user.is_superuser} />
             </dl>
           </>
         ) : (
@@ -256,14 +310,19 @@ export default function ProfilePage() {
               <label className="text-sm font-medium text-slate-700">صورة الملف الشخصي</label>
               <div className="flex items-center gap-4">
                 <div className="flex-shrink-0">
-                  {profileImagePreview ? (
+                  {newImagePreview ? (
                     <img
-                      src={profileImagePreview}
+                      src={newImagePreview}
                       alt="Preview"
                       className="h-20 w-20 rounded-full object-cover"
                     />
                   ) : (
-                    <AvatarFallback name={`${firstName} ${lastName}`} size="lg" />
+                    <FallbackImage
+                      src={withImageVersion(user.profile_image, imageVersion)}
+                      alt={`${firstName} ${lastName}`}
+                      className="h-20 w-20 rounded-full object-cover"
+                      fallback={<AvatarFallback name={`${firstName} ${lastName}`} size="lg" />}
+                    />
                   )}
                 </div>
                 <div className="flex-1">

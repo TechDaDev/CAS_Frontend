@@ -5,13 +5,24 @@ import { useAuth } from '@/hooks/useAuth';
 import { PositionType } from '@/types';
 import { organizationService } from '@/services/organization';
 import { PageHeader } from '@/components/PageHeader';
+import { OrganizationAccessGuard } from '@/components/organization/OrganizationAccessGuard';
 import { EntityTable, Column } from '@/components/management/EntityTable';
 import { EntityFormModal } from '@/components/management/EntityFormModal';
 import { FilterBar } from '@/components/management/FilterBar';
 import { PaginationControls } from '@/components/PaginationControls';
+import { resolveLoadErrorMessage } from '@/lib/org-actions';
 import Link from 'next/link';
 
 export default function PositionTypesPage() {
+  // Only the dean or the platform super admin may manage position types.
+  return (
+    <OrganizationAccessGuard capability="manage_structure_definitions">
+      <PositionTypesContent />
+    </OrganizationAccessGuard>
+  );
+}
+
+function PositionTypesContent() {
   const { user } = useAuth();
   const [positionTypes, setPositionTypes] = useState<PositionType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,8 +53,8 @@ export default function PositionTypesPage() {
       setTotalItems(response.count);
       setHasNextPage(Boolean(response.next));
       setHasPreviousPage(Boolean(response.previous));
-    } catch {
-      setError('فشل تحميل أنواع المناصب');
+    } catch (err: unknown) {
+      setError(resolveLoadErrorMessage(err, 'تعذر تحميل أنواع المناصب'));
     } finally {
       setIsLoading(false);
     }

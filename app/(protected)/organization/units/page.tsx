@@ -5,14 +5,26 @@ import { useAuth } from '@/hooks/useAuth';
 import { Unit, UnitTreeNode, UnitType } from '@/types';
 import { organizationService } from '@/services/organization';
 import { PageHeader } from '@/components/PageHeader';
+import { OrganizationAccessGuard } from '@/components/organization/OrganizationAccessGuard';
 import { EntityTable, Column } from '@/components/management/EntityTable';
 import { EntityFormModal } from '@/components/management/EntityFormModal';
 import { FilterBar } from '@/components/management/FilterBar';
 import { PaginationControls } from '@/components/PaginationControls';
+import { usePermissions } from '@/hooks/usePermissions';
+import { resolveLoadErrorMessage } from '@/lib/org-actions';
 import Link from 'next/link';
 
 export default function UnitsPage() {
+  return (
+    <OrganizationAccessGuard>
+      <UnitsContent />
+    </OrganizationAccessGuard>
+  );
+}
+
+function UnitsContent() {
   const { user } = useAuth();
+  const permissions = usePermissions();
   const [units, setUnits] = useState<Unit[]>([]);
   const [parentUnits, setParentUnits] = useState<Array<Pick<Unit, 'id' | 'name' | 'code'>>>([]);
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
@@ -45,8 +57,9 @@ export default function UnitsPage() {
       setTotalItems(unitsResponse.count);
       setHasNextPage(Boolean(unitsResponse.next));
       setHasPreviousPage(Boolean(unitsResponse.previous));
-    } catch {
-      setError('Failed to load units');
+    } catch (err: unknown) {
+      // A 403 must not be rendered as an empty list.
+      setError(resolveLoadErrorMessage(err, 'تعذر تحميل الوحدات'));
     } finally {
       setIsLoading(false);
     }
@@ -232,16 +245,18 @@ export default function UnitsPage() {
         <Link href="/organization" className="text-sm text-blue-600 hover:text-blue-800">
           ← العودة إلى الهيكل التنظيمي
         </Link>
-        <button
-          onClick={() => {
-            setEditingUnit(null);
-            setFormErrors({});
-            setIsModalOpen(true);
-          }}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          إنشاء وحدة
-        </button>
+        {permissions.canCreateUnit && (
+          <button
+            onClick={() => {
+              setEditingUnit(null);
+              setFormErrors({});
+              setIsModalOpen(true);
+            }}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            إنشاء وحدة
+          </button>
+        )}
       </div>
 
       <div className="mb-4">
@@ -265,7 +280,7 @@ export default function UnitsPage() {
         columns={columns}
         data={units}
         keyExtractor={(item) => item.id}
-        onEdit={handleEdit}
+        onEdit={permissions.canUpdateUnit ? handleEdit : undefined}
         isLoading={isLoading}
       />
 

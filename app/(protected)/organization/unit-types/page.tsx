@@ -5,13 +5,24 @@ import { useAuth } from '@/hooks/useAuth';
 import { UnitType } from '@/types';
 import { organizationService } from '@/services/organization';
 import { PageHeader } from '@/components/PageHeader';
+import { OrganizationAccessGuard } from '@/components/organization/OrganizationAccessGuard';
 import { EntityTable, Column } from '@/components/management/EntityTable';
 import { EntityFormModal } from '@/components/management/EntityFormModal';
 import { FilterBar } from '@/components/management/FilterBar';
 import { PaginationControls } from '@/components/PaginationControls';
+import { resolveLoadErrorMessage } from '@/lib/org-actions';
 import Link from 'next/link';
 
 export default function UnitTypesPage() {
+  // Only the dean or the platform super admin may manage unit types.
+  return (
+    <OrganizationAccessGuard capability="manage_structure_definitions">
+      <UnitTypesContent />
+    </OrganizationAccessGuard>
+  );
+}
+
+function UnitTypesContent() {
   const { user } = useAuth();
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,8 +53,8 @@ export default function UnitTypesPage() {
       setTotalItems(response.count);
       setHasNextPage(Boolean(response.next));
       setHasPreviousPage(Boolean(response.previous));
-    } catch {
-      setError('Failed to load unit types');
+    } catch (err: unknown) {
+      setError(resolveLoadErrorMessage(err, 'تعذر تحميل أنواع الوحدات'));
     } finally {
       setIsLoading(false);
     }

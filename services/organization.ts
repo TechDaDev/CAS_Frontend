@@ -118,6 +118,20 @@ export interface CreateAssignmentPayload {
   end_date?: string;
 }
 
+/**
+ * A user selectable in the assignment form.
+ *
+ * Deliberately minimal: the backend exposes only the identifier and the two
+ * display fields. Listing candidates is not institution-user administration, so
+ * this is available to a manager whose role allows assignments but not user
+ * management.
+ */
+export interface AssignmentCandidate {
+  id: string;
+  full_name: string;
+  email: string;
+}
+
 // Structure Permission Rules
 export interface StructureRuleFilters {
   institution?: string;
@@ -170,7 +184,6 @@ class OrganizationService {
   async getUnitTree(institutionId: string): Promise<UnitTreeNode[]> {
     return api.get<UnitTreeNode[]>(`/organization/units/tree/`, { institution: institutionId });
   }
-
   async createUnit(payload: CreateUnitPayload): Promise<Unit> {
     return api.post<Unit>('/organization/units/', payload);
   }
@@ -255,6 +268,17 @@ class OrganizationService {
 
   async updateAssignment(id: string, payload: Partial<CreateAssignmentPayload>): Promise<Assignment> {
     return api.patch<Assignment>(`/organization/assignments/${id}/`, payload);
+  }
+
+  /**
+   * Users selectable for an assignment, scoped by the backend to the caller's
+   * own institution. Refused with 403 when the caller holds neither
+   * `create_assignment` nor `update_assignment`.
+   */
+  async getAssignmentCandidates(institutionId?: string): Promise<AssignmentCandidate[]> {
+    const params: Record<string, string> = {};
+    if (institutionId) params.institution = institutionId;
+    return api.get<AssignmentCandidate[]>('/organization/assignments/candidates/', params);
   }
 
   // Structure Permission Rules

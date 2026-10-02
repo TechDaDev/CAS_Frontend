@@ -7,6 +7,11 @@ import { usePathname } from 'next/navigation';
 import { uiLabels } from '@/lib/ui-ar';
 import { FallbackImage } from '@/components/common/FallbackImage';
 import { PermissionAction } from '@/hooks/useAuth';
+import {
+  isPlatformPath,
+  isPlatformSuperAdmin,
+  resolveRoleLabel,
+} from '@/lib/user-identity';
 
 interface NavItem {
   label: string;
@@ -88,7 +93,9 @@ const institutionNavItems: NavItem[] = [
   {
     label: uiLabels.organization,
     href: '/organization',
-    permission: 'view_reports',
+    // Organization is an independent permission: it must not be tied to
+    // `view_reports`, which is a reporting concern.
+    permission: 'view_organization',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -172,40 +179,19 @@ export function SidebarNav() {
   const { user, isLoading } = useAuth();
   const permissions = usePermissions();
   const pathname = usePathname();
-  const isPlatformRoute = pathname?.startsWith('/platform');
-  const isSuperuser = user?.is_superuser;
+  const isPlatformRoute = isPlatformPath(pathname);
+  const isSuperuser = isPlatformSuperAdmin(user);
 
-  // Determine which navigation items to show
-  let navItemsToShow: NavItem[] = [];
-  
-  if (isPlatformRoute && isSuperuser) {
-    // Show platform navigation for super admins on platform routes
-    navItemsToShow = platformNavItems;
-  } else {
-    // Show institution navigation
-    navItemsToShow = institutionNavItems;
-    
-    // If superuser is on institution routes, also show platform link
-    if (isSuperuser && !isPlatformRoute) {
-      navItemsToShow = [
-        ...institutionNavItems,
-        {
-          label: 'إدارة المنصة',
-          href: '/platform',
-          icon: (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          ),
-          requiresSuperuser: true,
-        },
-      ];
-    }
-  }
+  // Strict area separation. The platform administrator exists to create and
+  // manage institutions and gets platform navigation only; institution users
+  // never see platform navigation. The route guard in the protected layout
+  // enforces the same split, so this file stays presentation only.
+  const navItemsToShow: NavItem[] = isSuperuser
+    ? platformNavItems
+    : institutionNavItems;
 
   const filteredNavItems = navItemsToShow.filter(item => {
-    if (item.requiresSuperuser && !user?.is_superuser) {
+    if (item.requiresSuperuser && !isSuperuser) {
       return false;
     }
     if (item.permission && !permissions.can(item.permission)) {
@@ -234,30 +220,40 @@ export function SidebarNav() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Institution Logo Header */}
-      {!isPlatformRoute && user?.institution_id && (
+      {/* Identity header. The platform administrator has no college, so it gets
+          a platform header instead of an institution one. */}
+      {isSuperuser ? (
         <div className="border-b border-slate-200 px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden">
-              <FallbackImage
-                src={user?.profile_image ?? null}
-                alt={user?.institution_name || 'Institution logo'}
-                className="h-full w-full object-cover"
-                fallback={
-                  <span className="text-lg font-bold text-slate-400">
-                    {user?.institution_name?.[0] || 'C'}
-                  </span>
-                }
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">
-                {user?.institution_name || 'الكلية'}
-              </p>
-              <p className="text-xs text-slate-500">{user?.is_superuser ? 'مدير المنصة' : 'موظف'}</p>
+          <p className="text-sm font-medium text-slate-900">إدارة المنصة</p>
+          <p className="text-xs text-slate-500">{resolveRoleLabel(user)}</p>
+        </div>
+      ) : (
+        !isPlatformRoute &&
+        user?.institution_id && (
+          <div className="border-b border-slate-200 px-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden">
+                <FallbackImage
+                  src={user?.profile_image ?? null}
+                  alt={user?.institution_name || 'Institution logo'}
+                  className="h-full w-full object-cover"
+                  fallback={
+                    <span className="text-lg font-bold text-slate-400">
+                      {user?.institution_name?.[0] || 'C'}
+                    </span>
+                  }
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-900 truncate">
+                  {user?.institution_name || 'الكلية'}
+                </p>
+                {/* Real organizational role from the backend, never `is_staff`. */}
+                <p className="text-xs text-slate-500 truncate">{resolveRoleLabel(user)}</p>
+              </div>
             </div>
           </div>
-        </div>
+        )
       )}
       
       <nav className="flex-1 space-y-1 px-3 py-4">

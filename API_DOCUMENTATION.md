@@ -79,6 +79,12 @@ Response body:
 ### GET /api/auth/me/
 
 - Note: Returns authenticated user profile.
+- Note: `profile_image` returns an authenticated API URL, not a raw `/media/` path.
+
+### GET /api/auth/me/profile-image/
+
+- Note: Streams the authenticated user's profile image.
+- Note: Returns `404` when the user has no profile image or when the stored file is missing.
 
 Request body: none
 
@@ -94,7 +100,7 @@ Response body:
   "is_staff": true,
   "is_superuser": true,
   "institution_name": null,
-  "profile_image": null
+  "profile_image": "https://corrarchivsystem.up.railway.app/api/auth/me/profile-image/"
 }
 ```
 
@@ -144,6 +150,7 @@ Response body:
 - POST /api/accounts/institution-users/
 - GET /api/accounts/institution-users/{id}/
 - PATCH /api/accounts/institution-users/{id}/
+- GET /api/accounts/institution-users/{id}/profile-image/
 
 ### POST /api/accounts/institution-users/
 
@@ -186,7 +193,7 @@ Response body:
   "last_name": "Teacher",
   "is_active": true,
   "user_category": "teaching",
-  "profile_image": "http://127.0.0.1:8000/media/users/.../profile/....gif",
+  "profile_image": "http://127.0.0.1:8000/api/accounts/institution-users/<id>/profile-image/",
   "profile_institution": "uuid",
   "created_at": "2026-04-06T00:00:00Z",
   "updated_at": "2026-04-06T00:00:00Z"
@@ -1035,6 +1042,7 @@ Response body:
 - Notifications are in-app only (no email/SMS/push).
 - Audit logs are read-only via API.
 - Attachment download remains permission-checked and should be fronted by protected media delivery in production.
+- Profile images are served through authenticated API endpoints rather than direct `/media/` URLs in production responses.
 - Organization subtree visibility is backed by a closure table for fast descendant lookups.
 - Registry numbering is concurrency-safe through a dedicated `RegistrySequence` table.
 - Reports and state-changing endpoints are throttle-scoped; see `README.md` for default rates.

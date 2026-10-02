@@ -5,14 +5,26 @@ import { useAuth } from '@/hooks/useAuth';
 import { Position, PositionType, Unit } from '@/types';
 import { organizationService } from '@/services/organization';
 import { PageHeader } from '@/components/PageHeader';
+import { OrganizationAccessGuard } from '@/components/organization/OrganizationAccessGuard';
 import { EntityTable, Column } from '@/components/management/EntityTable';
 import { EntityFormModal } from '@/components/management/EntityFormModal';
 import { FilterBar } from '@/components/management/FilterBar';
 import { PaginationControls } from '@/components/PaginationControls';
+import { usePermissions } from '@/hooks/usePermissions';
+import { resolveLoadErrorMessage } from '@/lib/org-actions';
 import Link from 'next/link';
 
 export default function PositionsPage() {
+  return (
+    <OrganizationAccessGuard>
+      <PositionsContent />
+    </OrganizationAccessGuard>
+  );
+}
+
+function PositionsContent() {
   const { user } = useAuth();
+  const permissions = usePermissions();
   const [positions, setPositions] = useState<Position[]>([]);
   const [positionTypes, setPositionTypes] = useState<PositionType[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -46,8 +58,8 @@ export default function PositionsPage() {
       setTotalItems(positionsResponse.count);
       setHasNextPage(Boolean(positionsResponse.next));
       setHasPreviousPage(Boolean(positionsResponse.previous));
-    } catch {
-      setError('فشل تحميل المناصب');
+    } catch (err: unknown) {
+      setError(resolveLoadErrorMessage(err, 'فشل تحميل المناصب'));
     } finally {
       setIsLoading(false);
     }
@@ -220,16 +232,18 @@ export default function PositionsPage() {
         <Link href="/organization" className="text-sm text-blue-600 hover:text-blue-800">
           ← العودة إلى الهيكل التنظيمي
         </Link>
-        <button
-          onClick={() => {
-            setEditingPosition(null);
-            setFormErrors({});
-            setIsModalOpen(true);
-          }}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          إنشاء منصب
-        </button>
+        {permissions.canCreatePosition && (
+          <button
+            onClick={() => {
+              setEditingPosition(null);
+              setFormErrors({});
+              setIsModalOpen(true);
+            }}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            إنشاء منصب
+          </button>
+        )}
       </div>
 
       <div className="mb-4">
@@ -253,7 +267,7 @@ export default function PositionsPage() {
         columns={columns}
         data={positions}
         keyExtractor={(item) => item.id}
-        onEdit={handleEdit}
+        onEdit={permissions.canUpdatePosition ? handleEdit : undefined}
         isLoading={isLoading}
       />
 

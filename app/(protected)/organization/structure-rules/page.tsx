@@ -5,13 +5,24 @@ import { useAuth } from '@/hooks/useAuth';
 import { StructurePermissionRule, RoleDefinition, UnitType } from '@/types';
 import { organizationService } from '@/services/organization';
 import { PageHeader } from '@/components/PageHeader';
+import { OrganizationAccessGuard } from '@/components/organization/OrganizationAccessGuard';
 import { EntityTable, Column } from '@/components/management/EntityTable';
 import { EntityFormModal } from '@/components/management/EntityFormModal';
 import { FilterBar } from '@/components/management/FilterBar';
 import { PaginationControls } from '@/components/PaginationControls';
+import { STRUCTURE_RULE_ACTIONS, resolveLoadErrorMessage } from '@/lib/org-actions';
 import Link from 'next/link';
 
 export default function StructureRulesPage() {
+  // Structure rules define who may do what: dean or platform super admin only.
+  return (
+    <OrganizationAccessGuard capability="manage_structure_rules">
+      <StructureRulesContent />
+    </OrganizationAccessGuard>
+  );
+}
+
+function StructureRulesContent() {
   const { user } = useAuth();
   const [rules, setRules] = useState<StructurePermissionRule[]>([]);
   const [roleDefinitions, setRoleDefinitions] = useState<RoleDefinition[]>([]);
@@ -46,8 +57,8 @@ export default function StructureRulesPage() {
       setTotalItems(rulesResponse.count);
       setHasNextPage(Boolean(rulesResponse.next));
       setHasPreviousPage(Boolean(rulesResponse.previous));
-    } catch {
-      setError('فشل تحميل قواعد الهيكل');
+    } catch (err: unknown) {
+      setError(resolveLoadErrorMessage(err, 'تعذر تحميل قواعد الهيكل'));
     } finally {
       setIsLoading(false);
     }
@@ -184,13 +195,13 @@ export default function StructureRulesPage() {
     { key: 'isActive', label: 'نشط فقط', type: 'checkbox' as const },
   ];
 
-  const actionOptions = [
-    { value: 'create', label: 'إنشاء' },
-    { value: 'update', label: 'تحديث' },
-    { value: 'delete', label: 'حذف' },
-    { value: 'view', label: 'عرض' },
-    { value: 'manage', label: 'إدارة' },
-  ];
+  // The backend defines a granular action vocabulary. The old generic
+  // create/update/delete/view/manage list produced payloads the API rejects,
+  // so the options now come from the single shared source of truth.
+  const actionOptions = STRUCTURE_RULE_ACTIONS.map((action) => ({
+    value: action.value,
+    label: action.label,
+  }));
 
   const unitTypeOptions = [{ value: '', label: 'أي' }, ...unitTypes.map((t) => ({ value: t.id, label: t.name }))];
   const roleOptions = roleDefinitions.map((r) => ({ value: r.id, label: r.name }));
